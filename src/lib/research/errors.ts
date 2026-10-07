@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { RefusalError } from "./agent";
+import { SearchUnavailableError } from "./steps";
 
 export type ErrorInfo = {
   /** Melding på norsk som vises til brukeren */
@@ -19,6 +20,9 @@ export function describeError(err: unknown, attempt: number): ErrorInfo {
 
   if (err instanceof RefusalError) {
     return { message: err.message, retryable: false, backoffSec: 0 };
+  }
+  if (err instanceof SearchUnavailableError) {
+    return { message: err.message, retryable: true, backoffSec: backoff(120) };
   }
   if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) {
     return { message: "Anthropic avviste API-nøkkelen. Sjekk ANTHROPIC_API_KEY.", retryable: false, backoffSec: 0 };

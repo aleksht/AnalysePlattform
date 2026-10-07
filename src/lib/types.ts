@@ -79,6 +79,7 @@ export type Source = {
 
 export type RunSection = {
   summary: string;
+  tool_errors?: Record<string, number>;
   themes: { theme: string; coverage: "god" | "begrenset" | "lite"; coverage_note: string | null; summary: string }[];
   key_points?: { point: string; period: string; source: { url: string; title: string | null } }[];
   promises?: {
