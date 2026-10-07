@@ -2,17 +2,22 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { getFolders, getStock } from "@/lib/data";
+import { getActiveRun, getFolders, getLastFailedRun, getLatestResearch, getStock } from "@/lib/data";
 import { parseTab, STOCK_TABS, type TabSlug } from "@/lib/tabs";
 import { formatDate } from "@/lib/format";
-import type { Stock } from "@/lib/types";
+import type { Finding, Stock } from "@/lib/types";
 import { SentimentBadge } from "@/components/sentiment-badge";
 import { StockTabs } from "@/components/stock-tabs";
 import { StockSettings } from "@/components/stock-settings";
 import { EmptyState } from "@/components/empty-state";
+import { RunControl } from "@/components/run-control";
+import { CategoryView, ManagementView, RedFlagsView, SourcesView } from "@/components/findings";
+import { formatUsd } from "@/lib/format";
+
+type Research = Awaited<ReturnType<typeof getLatestResearch>>;
 
 async function loadStock(id: string) {
-  if (!z.uuid().safeParse(id).success) notFound();
+  if (!z.guid().safeParse(id).success) notFound();
   const stock = await getStock(id);
   if (!stock) notFound();
   return stock;
@@ -28,6 +33,11 @@ export default async function StockPage({ params, searchParams }: PageProps<"/ak
   const { id } = await params;
   const tab = parseTab((await searchParams).fane);
   const [stock, folders] = await Promise.all([loadStock(id), getFolders()]);
+  const [research, activeRunId, failedRun] = await Promise.all([
+    getLatestResearch(stock.id),
+    getActiveRun(stock.id),
+    getLastFailedRun(stock.id),
+  ]);
   const folder = folders.find((f) => f.id === stock.folder_id);
 
   return (
@@ -51,22 +61,38 @@ export default async function StockPage({ params, searchParams }: PageProps<"/ak
               </span>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex w-full flex-wrap items-start gap-2 sm:w-auto">
             <button className="btn-secondary" disabled title="Kommer i fase 3">
               Rapportvisning
             </button>
-            <button className="btn-primary" disabled title="Kommer i fase 2">
-              Kjør ny research nå
-            </button>
+            <RunControl key={activeRunId ?? "idle"} stockId={stock.id} activeRunId={activeRunId} />
           </div>
         </div>
+        {failedRun && !activeRunId && (
+          <p className="mt-4 rounded-md bg-neg-bg px-3 py-2 text-sm text-neg">
+            Siste research feilet: {failedRun.error ?? "ukjent feil"}. Kjør på nytt for å prøve igjen.
+          </p>
+        )}
+        {research?.run.error && (
+          <p className="mt-4 rounded-md bg-warn-bg px-3 py-2 text-sm text-warn">
+            Noen deler av siste research feilet: {research.run.error}
+          </p>
+        )}
       </div>
 
       <StockTabs stockId={stock.id} active={tab} />
 
       <section aria-label={STOCK_TABS.find((t) => t.slug === tab)?.label}>
-        <TabContent tab={tab} stock={stock} />
+        <TabContent tab={tab} stock={stock} research={research} />
       </section>
+
+      {research && (
+        <p className="text-xs text-muted">
+          Siste kjøring {formatDate(research.run.finished_at)}: {research.run.findings_count} funn fra{" "}
+          {research.sources.length} kilder, {research.run.web_searches} søk, estimert kostnad{" "}
+          {formatUsd(research.run.cost_usd)}.
+        </p>
+      )}
 
       <StockSettings stock={stock} folders={folders} />
     </div>
@@ -100,19 +126,46 @@ const EMPTY_TEXT: Record<Exclude<TabSlug, "oversikt">, { title: string; body: st
   },
 };
 
-function TabContent({ tab, stock }: { tab: TabSlug; stock: Stock }) {
-  if (tab === "oversikt") return <Overview stock={stock} />;
-  const t = EMPTY_TEXT[tab];
-  return (
-    <EmptyState title={t.title}>
-      <p>{t.body}</p>
-      <p className="mt-2">Kjør research for å fylle denne fanen.</p>
-    </EmptyState>
-  );
+function TabContent({ tab, stock, research }: { tab: TabSlug; stock: Stock; research: Research }) {
+  if (tab === "oversikt") return <Overview stock={stock} research={research} />;
+  if (!research) {
+    const t = EMPTY_TEXT[tab];
+    return (
+      <EmptyState title={t.title}>
+        <p>{t.body}</p>
+        <p className="mt-2">Kjør research for å fylle denne fanen.</p>
+      </EmptyState>
+    );
+  }
+  const { run, findings, sources } = research;
+  const by = (c: Finding["category"]) => findings.filter((f) => f.category === c);
+  switch (tab) {
+    case "kunder":
+      return <CategoryView section={run.sections?.kunder} findings={by("kunder")} />;
+    case "ansatte":
+      return <CategoryView section={run.sections?.ansatte} findings={by("ansatte")} />;
+    case "ledelse":
+      return <ManagementView section={run.sections?.ledelse} findings={by("ledelse")} />;
+    case "nyheter":
+      return (
+        <div className="space-y-10">
+          <CategoryView section={run.sections?.nyheter} findings={by("nyheter")} />
+          <div>
+            <h2 className="mb-3 text-lg font-semibold">Konkurrenter</h2>
+            <CategoryView section={run.sections?.konkurrenter} findings={by("konkurrenter")} />
+          </div>
+        </div>
+      );
+    case "rode-flagg":
+      return <RedFlagsView findings={findings} />;
+    case "kilder":
+      return <SourcesView sources={sources} findings={findings} />;
+  }
 }
 
-function Overview({ stock }: { stock: Stock }) {
+function Overview({ stock, research }: { stock: Stock; research: Research }) {
   const o = stock.overview;
+  const summaries = research?.run.sections;
   if (!o) {
     return (
       <EmptyState title="Ingen oversikt ennå">
@@ -143,7 +196,30 @@ function Overview({ stock }: { stock: Stock }) {
           </>
         )}
       </div>
-      <div className="space-y-4">
+      {summaries && (
+        <div className="card p-5 lg:col-span-2">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Kort fortalt</h2>
+          <dl className="space-y-3 text-sm">
+            {(
+              [
+                ["kunder", "Kunder"],
+                ["ansatte", "Ansatte"],
+                ["ledelse", "Ledelse og resultater"],
+                ["nyheter", "Nyheter og bransje"],
+                ["konkurrenter", "Konkurrenter"],
+              ] as const
+            ).map(([key, label]) =>
+              summaries[key] ? (
+                <div key={key}>
+                  <dt className="font-medium">{label}</dt>
+                  <dd className="text-muted">{summaries[key]!.summary}</dd>
+                </div>
+              ) : null,
+            )}
+          </dl>
+        </div>
+      )}
+      <div className="space-y-4 lg:col-start-3 lg:row-span-2 lg:row-start-1">
         <NamedList title="Viktigste kunder" items={o.key_customers} />
         <NamedList title="Konkurrenter" items={o.competitors} />
       </div>

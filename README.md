@@ -9,7 +9,7 @@ Webapp for aksjeresearch: hva kunder, ansatte og markedet faktisk mener om selsk
 | Fase | Innhold | Status |
 |---|---|---|
 | 1 | Innlogging, mapper, aksjer, aksjeside med tomme faner | ✅ |
-| 2 | Researchagent, lagring og visning av funn med kilder | – |
+| 2 | Researchagent, lagring og visning av funn med kilder | ✅ |
 | 3 | Innsiktsmodus, trend over tid, ukentlig kjøring | – |
 | 4 | Finpuss, feilhåndtering, kostnadsoversikt | – |
 
@@ -31,6 +31,12 @@ Webapp for aksjeresearch: hva kunder, ansatte og markedet faktisk mener om selsk
    ```
 
 5. Hent nøklene under **Project Settings → API Keys**: én publishable-nøkkel og én secret-nøkkel.
+6. Legg inn to hemmeligheter i Vault (SQL Editor). pg_cron bruker dem til å vekke arbeideren:
+
+   ```sql
+   select vault.create_secret('https://<din-app>.vercel.app', 'app_url');
+   select vault.create_secret('<samme verdi som JOB_SECRET>', 'job_secret');
+   ```
 
 ### 2. Miljøvariabler
 
@@ -45,6 +51,20 @@ npm install
 npm run dev
 ```
 
+## Slik fungerer researchagenten
+
+En kjøring består av seks steg: oversikt, kunder, ansatte, ledelse, nyheter og konkurrenter. Hvert steg har to faser:
+
+1. **Research.** Claude (`claude-sonnet-5-5`) søker og leser med web search og web fetch (`web_search_20260318` og `web_fetch_20260318`). Hvert steg har et eget tak på antall søk, og svar som stopper med `pause_turn`, blir videreført.
+2. **Uttrekk.** Notatene gjøres om til strengt strukturert JSON med structured outputs. Skjemaet bygges fra zod i `src/lib/research/schema.ts`. Kildene får id-er (S1, S2 …) fra listen over URL-er agenten faktisk så, og modellen kan bare velge blant disse. Hvert funn valideres med zod før det lagres.
+
+**Bakgrunnsjobber:**
+- Stegene ligger i tabellen `run_steps`. `/api/jobs/run-step` svarer 202 med en gang og kjører stegene i `after()`, innenfor `maxDuration = 300`.
+- Hvis tiden er i ferd med å renne ut, lagres samtalen, og steget fortsetter i neste runde. Feil prøves inntil tre ganger, med økende ventetid.
+- pg_cron sjekker hvert minutt om noe venter eller henger.
+
+**Kostnad:** Tokenforbruk og antall søk lagres per steg og per kjøring. Kostnaden estimeres ut fra prisene i `src/lib/research/config.ts` og vises på innstillingssiden.
+
 ## Struktur
 
 ```
@@ -56,6 +76,8 @@ src/app/(app)/         Innloggede sider: oversikt, aksjeside, innstillinger
 src/components/        UI-komponenter
 src/lib/actions/       Server actions (validert med zod)
 src/lib/supabase/      Supabase-klienter
+src/lib/research/      Researchagent: skjema, prompter, agent, steg, arbeider
+src/app/api/jobs/      Arbeideren (beskyttet med JOB_SECRET)
 ```
 
 ## Sikkerhet

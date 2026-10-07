@@ -50,3 +50,48 @@ export type ResearchRun = {
   created_at: string;
   finished_at: string | null;
 };
+
+export type Finding = {
+  id: string;
+  run_id: string;
+  category: Category;
+  theme: string;
+  claim: string;
+  sentiment: Sentiment;
+  quote: string | null;
+  is_paraphrase: boolean;
+  source_url: string;
+  source_type: string;
+  published_at: string | null;
+  evidence_strength: EvidenceStrength;
+  is_red_flag: boolean;
+};
+
+export type Source = {
+  id: string;
+  url: string;
+  title: string | null;
+  source_type: string;
+  published_at: string | null;
+  accessed_at: string;
+};
+
+export type RunSection = {
+  summary: string;
+  themes: { theme: string; coverage: "god" | "begrenset" | "lite"; coverage_note: string | null; summary: string }[];
+  key_points?: { point: string; period: string; source: { url: string; title: string | null } }[];
+  promises?: {
+    promise: string;
+    said_when: string;
+    status: "levert" | "delvis" | "ikke_levert" | "for_tidlig";
+    comment: string;
+    source: { url: string; title: string | null };
+  }[];
+};
+
+export type CompletedRun = ResearchRun & {
+  sections: Partial<Record<Category, RunSection>> | null;
+  findings_count: number;
+  red_flags: number;
+  web_fetches: number;
+};

@@ -16,7 +16,7 @@ const folderName = z
 const optionalId = z
   .string()
   .transform((v) => (v === "" ? null : v))
-  .pipe(z.uuid().nullable());
+  .pipe(z.guid().nullable());
 
 const stockInput = z.object({
   name: z.string().trim().min(1, { error: "Skriv inn selskapsnavn." }).max(120),
@@ -58,7 +58,7 @@ export async function createFolder(_prev: FormState, formData: FormData): Promis
 export async function renameFolder(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = folderName.safeParse(formData.get("name") ?? "");
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const id = z.uuid().parse(formData.get("id"));
+  const id = z.guid().parse(formData.get("id"));
 
   const { supabase } = await requireUser();
   const { error } = await supabase.from("folders").update({ name: parsed.data }).eq("id", id);
@@ -69,7 +69,7 @@ export async function renameFolder(_prev: FormState, formData: FormData): Promis
 }
 
 export async function deleteFolder(formData: FormData) {
-  const id = z.uuid().parse(formData.get("id"));
+  const id = z.guid().parse(formData.get("id"));
   const { supabase } = await requireUser();
   // Aksjene i mappen beholdes og havner under «Uten mappe» (on delete set null).
   await supabase.from("folders").delete().eq("id", id);
@@ -96,7 +96,7 @@ export async function createStock(_prev: FormState, formData: FormData): Promise
 }
 
 export async function updateStock(_prev: FormState, formData: FormData): Promise<FormState> {
-  const id = z.uuid().parse(formData.get("id"));
+  const id = z.guid().parse(formData.get("id"));
   const parsed = stockInput.safeParse({
     name: formData.get("name") ?? "",
     ticker: formData.get("ticker") ?? "",
@@ -118,7 +118,7 @@ export async function updateStock(_prev: FormState, formData: FormData): Promise
 }
 
 export async function deleteStock(formData: FormData) {
-  const id = z.uuid().parse(formData.get("id"));
+  const id = z.guid().parse(formData.get("id"));
   const { supabase } = await requireUser();
   await supabase.from("stocks").delete().eq("id", id);
   revalidatePath("/");

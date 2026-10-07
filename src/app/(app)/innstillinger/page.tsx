@@ -6,6 +6,14 @@ import { EmptyState } from "@/components/empty-state";
 
 export const metadata: Metadata = { title: "Innstillinger" };
 
+const STATUS: Record<string, string> = {
+  queued: "I kø",
+  running: "Kjører",
+  done: "Ferdig",
+  failed: "Feilet",
+  cancelled: "Avbrutt",
+};
+
 export default async function SettingsPage() {
   const { user } = await requireUser();
   const runs = await getRuns(100);
@@ -52,7 +60,7 @@ export default async function SettingsPage() {
                   <tr key={r.id}>
                     <td className="px-4 py-2 whitespace-nowrap">{formatDate(r.created_at)}</td>
                     <td className="px-4 py-2">{r.stocks?.name ?? "–"}</td>
-                    <td className="px-4 py-2">{r.status}</td>
+                    <td className="px-4 py-2">{STATUS[r.status] ?? r.status}</td>
                     <td className="px-4 py-2 text-right">{formatInt(r.input_tokens)}</td>
                     <td className="px-4 py-2 text-right">{formatInt(r.output_tokens)}</td>
                     <td className="px-4 py-2 text-right">{formatInt(r.web_searches)}</td>
