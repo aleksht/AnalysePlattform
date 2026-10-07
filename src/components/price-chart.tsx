@@ -144,7 +144,7 @@ export function PriceChart({
               </text>
             </g>
           ))}
-          <path d={path} fill="none" className="stroke-series-1" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+          <path d={path} fill="none" className={changePct >= 0 ? "stroke-pos" : "stroke-neg"} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
           {marks.map((m, i) => (
             <circle
               key={i}
@@ -168,7 +168,7 @@ export function PriceChart({
           {hover != null && active && (
             <g>
               <line x1={x(hover)} x2={x(hover)} y1={PAD.top} y2={H - PAD.bottom} className="stroke-muted" strokeOpacity={0.5} />
-              <circle cx={x(hover)} cy={y(active.close)} r={4.5} className="fill-series-1 stroke-surface-2" strokeWidth={2} />
+              <circle cx={x(hover)} cy={y(active.close)} r={4.5} className={`${changePct >= 0 ? "fill-pos" : "fill-neg"} stroke-surface-2`} strokeWidth={2} />
             </g>
           )}
           <rect

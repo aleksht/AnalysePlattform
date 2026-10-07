@@ -267,7 +267,7 @@ export function RedFlagsView({ findings }: { findings: Finding[] }) {
               <span>{sourceTypeLabel(f.source_type)}</span>
               <span>{f.published_at ? formatDate(f.published_at) : "Dato ukjent"}</span>
               <span>{STRENGTH_TEXT[f.evidence_strength]}</span>
-              <a href={f.source_url} target="_blank" rel="noopener noreferrer" className="text-[#2997ff] hover:underline">
+              <a href={f.source_url} target="_blank" rel="noopener noreferrer" className="text-[#33c784] hover:underline">
                 {hostOf(f.source_url)} ›
               </a>
             </p>
