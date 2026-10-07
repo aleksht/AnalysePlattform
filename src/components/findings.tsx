@@ -1,4 +1,4 @@
-import type { Category, Finding, RunSection, Source, Trend } from "@/lib/types";
+import type { Category, Finding, Report, RunSection, Source, Trend } from "@/lib/types";
 import { TrendBadge } from "./trend-badge";
 import { describeToolErrors, significantToolErrors } from "@/lib/research/tool-errors";
 import { SOURCE_TYPE_LABELS, THEME_LABELS } from "@/lib/research/schema";
@@ -227,11 +227,11 @@ export function ManagementView({
   );
 }
 
-export function RedFlagsView({ findings }: { findings: Finding[] }) {
+export function RedFlagsView({ findings, flags }: { findings: Finding[]; flags?: Report["red_flags"] }) {
   const list = findings
     .filter((f) => f.is_red_flag || f.sentiment === "negativ")
     .sort((a, b) => Number(b.is_red_flag) - Number(a.is_red_flag));
-  if (list.length === 0) {
+  if (list.length === 0 && !flags?.length) {
     return <EmptyState title="Ingen negative funn">Siste research fant ingen negative signaler med kilde.</EmptyState>;
   }
   const label: Record<Category, string> = {
@@ -247,9 +247,32 @@ export function RedFlagsView({ findings }: { findings: Finding[] }) {
         <h2 className="text-[32px] font-bold tracking-[-0.02em] sm:text-[48px]">Røde flagg.</h2>
       </div>
       <p className="text-center text-xl text-inverse-muted">
-        {list.filter((f) => f.is_red_flag).length} røde flagg og {list.filter((f) => !f.is_red_flag).length} andre
-        negative funn.
+        {flags
+          ? `${flags.length} røde flagg, samlet fra ${list.length} negative funn.`
+          : `${list.filter((f) => f.is_red_flag).length} røde flagg og ${list.filter((f) => !f.is_red_flag).length} andre negative funn.`}
       </p>
+      {flags && flags.length > 0 && (
+        <ol className="space-y-4">
+          {flags.map((r, i) => (
+            <li key={i} className="rounded-[22px] bg-inverse-surface p-6 sm:p-7">
+              <p className="text-xs font-semibold uppercase tracking-[0.04em] text-[#ff6961]">
+                Rødt flagg {i + 1} · {label[r.category]}
+              </p>
+              <p className="mt-2.5 text-[21px] font-semibold leading-snug">{r.text}</p>
+              <p className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[13px]">
+                {[...new Set(r.refs.map((x) => x.url))].map((url) => (
+                  <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="text-[#33c784] hover:underline">
+                    {hostOf(url)} ›
+                  </a>
+                ))}
+              </p>
+            </li>
+          ))}
+        </ol>
+      )}
+      {flags && list.length > 0 && (
+        <h3 className="pt-4 text-center text-[21px] font-semibold">Alle negative funn</h3>
+      )}
       <ul className="grid gap-5 md:grid-cols-2">
         {list.map((f) => (
           <li key={f.id} className="flex flex-col rounded-[22px] bg-inverse-surface p-6 sm:p-7">

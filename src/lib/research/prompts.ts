@@ -17,6 +17,7 @@ Regler:
 - Du har et begrenset antall søk. Planlegg dem, og bruk dem på de viktigste spørsmålene først. Feiler et søk, prøv en annen formulering eller les en kjent kilde direkte med web_fetch.
 - Skill mellom selskapets egne utsagn (markedsføring, pressemeldinger) og uavhengige kilder.
 - Selskapets egne kundecaser er nyttige, men vurder dem som mindre uavhengige.
+- Bruk ikke en side du bare har sett tittel eller søkeutdrag fra (f.eks. bak betalingsmur) som eneste belegg for detaljerte tall. Finn heller primærkilden.
 
 Svar til slutt med strukturerte researchnotater på norsk:
 1. Ett avsnitt per tema med punkter. Hvert punkt: påstand – stemning (positiv/nøytral/negativ) – kort sitat eller parafrase – URL – dato hvis kjent – kildetype.
@@ -51,7 +52,10 @@ Grupper funnene i temaene produktkvalitet, leveringstid, service, pris og relasj
 
 Bruk temaene vekst, nedbemanning, rekrutteringsfokus, arbeidsmiljø og ledelse_og_kultur.`,
 
-  ledelse: `Gå gjennom ledelsens kommunikasjon og resultater:
+  ledelse: `Gå gjennom ledelsens kommunikasjon og resultater.
+
+Start med primærkildene: finn selskapets siste kvartalsrapport (PDF eller pressemelding på investorsiden, Cision, MFN eller tilsvarende) og les den med web_fetch før du bruker sekundærkilder. Tall og guiding fra rapporten veier tyngst. Klarer du ikke å lese rapporten, si det.
+
 - Hovedpunkter fra de 2–4 siste kvartalsrapportene og resultatpresentasjonene (ordreinngang, omsetning, margin, kontantstrøm, segmenter)
 - Hva ledelsen har lovet eller satt som mål (finansielle mål, kapitalmarkedsdag, guiding, strategiske løfter) og hva som faktisk er levert
 - Endringer i ledelse og styre, oppkjøp, kapitalallokering
@@ -91,6 +95,8 @@ Regler:
 - Ikke finn på noe. Det er bedre med få, godt underbygde funn enn mange svake.
 - Ta med alle temaene i kategorien i "themes". Er det lite eller ingen informasjon om et tema, sett coverage til "lite" og skriv det i coverage_note.
 - Publiseringsdato: bruk datoen fra notatene eller kildelisten. Er den ukjent, bruk null.
+- Rødt flagg (is_red_flag) bare for vesentlige negative forhold som hører til denne kategorien, og bare med sentiment negativ. Selskapets egne finansielle tall (margin, omsetning, gjeld) hører til Ledelse og resultater og skal ikke flagges i andre kategorier.
+- Velg temaet som faktisk passer funnet. Et funn om tollsatser er ikke automatisk "regulering", og fallende marginer er ikke "markedsposisjon".
 - Skriv påstander og oppsummeringer på norsk bokmål. Sitater kan stå på originalspråket.`;
 
 export function extractUserPrompt(stepLabel: string, stock: StockContext, notes: string, sourceList: string): string {
@@ -114,7 +120,8 @@ Regler:
 - Vær balansert: ta med både styrker og svakheter, og vekt sterk evidens høyere enn svak.
 - Skriv konkret og nøkternt, uten superlativer. Leseren er en erfaren privat investor.
 - "changes" skal bare beskrive endringer mot forrige kjøring som støttes av funnene og trendtabellen. Finnes ingen forrige kjøring, la listen være tom.
-- "data_gaps" beskriver hva det fantes lite offentlig informasjon om.`;
+- "data_gaps" beskriver hva det fantes lite offentlig informasjon om.
+- "red_flags" er de røde flaggene slått sammen: samme forhold nevnt i flere kategorier eller funn blir ett punkt som viser til alle funnene. Bare negative forhold, ikke blandede punkter som starter med noe positivt. Maks 6, de alvorligste først.`;
 
 export function synthesisUserPrompt(input: {
   stock: StockContext;

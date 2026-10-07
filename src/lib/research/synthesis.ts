@@ -13,6 +13,8 @@ export type Report = {
   takeaways: { text: string; sentiment: "positiv" | "nøytral" | "negativ"; refs: LinkedRef[] }[];
   changes: { text: string; direction: "bedre" | "verre" | "uendret" | "ny"; refs: LinkedRef[] }[];
   watch_points: { text: string; refs: LinkedRef[] }[];
+  /** Røde flagg slått sammen på tvers av kategorier. Mangler i rapporter laget før dette fantes. */
+  red_flags?: { text: string; category: Category; refs: LinkedRef[] }[];
   data_gaps: string[];
 };
 
@@ -138,6 +140,10 @@ export async function runSynthesis(
     watch_points: data.watch_points
       .map((w) => ({ text: w.text, refs: link(w.finding_refs) }))
       .filter((w) => w.refs.length > 0),
+    red_flags: data.red_flags
+      .map((r) => ({ text: r.text, category: r.category, refs: link(r.finding_refs) }))
+      .filter((r) => r.refs.length > 0)
+      .slice(0, 6),
     data_gaps: data.data_gaps,
   };
 

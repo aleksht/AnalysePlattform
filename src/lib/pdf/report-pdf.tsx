@@ -1,8 +1,11 @@
 import "server-only";
-import { Document, Link, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Font, Link, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import { CATEGORIES, STEP_LABELS, THEME_LABELS } from "@/lib/research/schema";
 import { hostOf } from "@/lib/research/sources";
 import type { CompletedRun, Finding, Source, Stock, TrendEntry } from "@/lib/types";
+
+// Ingen orddeling: standarden deler norske ord feil («reko-rdstor»)
+Font.registerHyphenationCallback((word) => [word]);
 
 // Farger fra appen: logogrønn, nesten svart tekst og dempet grå
 const C = {
@@ -67,10 +70,11 @@ export type ReportPdfProps = {
   run: CompletedRun;
   findings: Finding[];
   sources: Source[];
-  priceYearChange: number | null;
+  /** Kursendring i prosent; since er startdato når vi ikke har et helt år med kurser. */
+  priceChange: { pct: number; since: string | null } | null;
 };
 
-export function ReportPdf({ stock, run, findings, sources, priceYearChange }: ReportPdfProps) {
+export function ReportPdf({ stock, run, findings, sources, priceChange }: ReportPdfProps) {
   const report = run.report;
   const trend = run.trend;
   const overall = run.theme_scores?.overall ?? null;
@@ -88,13 +92,23 @@ export function ReportPdf({ stock, run, findings, sources, priceYearChange }: Re
       })
       .join(" ");
 
-  const redFlags = findings.filter((f) => f.is_red_flag).slice(0, 12);
   const byKey = new Map<string, TrendEntry>((trend?.entries ?? []).map((e) => [e.key, e]));
 
   // Bygg innholdet først, så kildelisten til slutt får alle numrene
   const takeaways = (report?.takeaways ?? []).map((x) => ({ ...x, c: cite(x.refs) }));
   const changes = trend?.previous_run_id ? (report?.changes ?? []).map((x) => ({ ...x, c: cite(x.refs) })) : [];
-  const flags = redFlags.map((f) => ({ f, c: cite([{ url: f.source_url }]) }));
+  // Sammenslåtte røde flagg fra syntesen; eldre rapporter har bare flaggene per funn
+  const flags = report?.red_flags
+    ? report.red_flags.map((r, i) => ({ key: String(i), label: STEP_LABELS[r.category], text: r.text, c: cite(r.refs) }))
+    : findings
+        .filter((f) => f.is_red_flag)
+        .slice(0, 12)
+        .map((f) => ({
+          key: f.id,
+          label: `${STEP_LABELS[f.category]} · ${THEME_LABELS[f.theme] ?? f.theme}`,
+          text: f.claim,
+          c: cite([{ url: f.source_url }]),
+        }));
   const promises = (sections.ledelse?.promises ?? []).map((p) => ({ p, c: cite([p.source]) }));
   const watch = (report?.watch_points ?? []).map((w) => ({ ...w, c: cite(w.refs) }));
 
@@ -121,9 +135,12 @@ export function ReportPdf({ stock, run, findings, sources, priceYearChange }: Re
               {SENT[overall.label] ?? overall.label} · {fmtNum(overall.score)}
             </Text>
           )}
-          {overallTrend && overallTrend.direction !== "ny" && (
+          {overallTrend && ["bedre", "verre", "uendret"].includes(overallTrend.direction) && (
             <Text style={[s.pill, { color: DIR_COLOR[overallTrend.direction] }]}>
-              {DIR[overallTrend.direction]} enn {fmtDate(trend?.previous_finished_at)}
+              {overallTrend.direction === "bedre" || overallTrend.direction === "verre"
+                ? `${DIR[overallTrend.direction]} enn forrige kjøring`
+                : `${DIR[overallTrend.direction]} siden forrige kjøring`}
+              {trend?.previous_finished_at ? ` (${fmtDate(trend.previous_finished_at)})` : ""}
             </Text>
           )}
           <Text style={[s.pill, { color: run.red_flags > 0 ? C.neg : C.fg }]}>{run.red_flags} røde flagg</Text>
@@ -133,7 +150,10 @@ export function ReportPdf({ stock, run, findings, sources, priceYearChange }: Re
           {stock.last_price != null && (
             <Text style={s.pill}>
               Kurs {fmtNum(Number(stock.last_price))} {stock.price_currency ?? ""}
-              {priceYearChange != null && `, ${priceYearChange >= 0 ? "+" : "-"}${fmtNum(Math.abs(priceYearChange), 1)} % siste år`}
+              {priceChange != null &&
+                `, ${priceChange.pct >= 0 ? "+" : "-"}${fmtNum(Math.abs(priceChange.pct), 1)} % ${
+                  priceChange.since ? `siden ${fmtDate(priceChange.since)}` : "siste år"
+                }`}
             </Text>
           )}
         </View>
@@ -193,9 +213,13 @@ export function ReportPdf({ stock, run, findings, sources, priceYearChange }: Re
                     const items = list.filter((f) => f.theme === th.theme);
                     const pos = items.filter((f) => f.sentiment === "positiv").length;
                     const neg = items.filter((f) => f.sentiment === "negativ").length;
+                    // Temaer uten funn er bare støy; «lite info» vises fordi det er en opplysning i seg selv
+                    if (th.coverage !== "lite" && items.length === 0) return null;
+                    const text =
+                      th.coverage === "lite" ? "lite info" : pos + neg === 0 ? `${items.length} ${items.length === 1 ? "nøytralt" : "nøytrale"}` : `+${pos} / -${neg}`;
                     return (
                       <Text key={th.theme} style={s.chip}>
-                        {THEME_LABELS[th.theme] ?? th.theme}: {th.coverage === "lite" ? "lite info" : `+${pos} / -${neg}`}
+                        {THEME_LABELS[th.theme] ?? th.theme}: {text}
                       </Text>
                     );
                   })}
@@ -208,13 +232,11 @@ export function ReportPdf({ stock, run, findings, sources, priceYearChange }: Re
         {flags.length > 0 && (
           <View>
             <Text style={s.h2}>Røde flagg</Text>
-            {flags.map(({ f, c }) => (
-              <View key={f.id} style={{ marginBottom: 6 }} wrap={false}>
-                <Text style={[s.small, { color: C.neg, fontFamily: "Helvetica-Bold" }]}>
-                  {STEP_LABELS[f.category]} · {THEME_LABELS[f.theme] ?? f.theme}
-                </Text>
+            {flags.map((f) => (
+              <View key={f.key} style={{ marginBottom: 6 }} wrap={false}>
+                <Text style={[s.small, { color: C.neg, fontFamily: "Helvetica-Bold" }]}>{t(f.label)}</Text>
                 <Text>
-                  {t(f.claim)} <Text style={s.cite}>{c}</Text>
+                  {t(f.text)} <Text style={s.cite}>{f.c}</Text>
                 </Text>
               </View>
             ))}

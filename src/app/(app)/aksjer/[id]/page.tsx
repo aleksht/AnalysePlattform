@@ -287,7 +287,7 @@ function TabContent({ tab, stock, research }: { tab: TabSlug; stock: Stock; rese
         </div>
       );
     case "rode-flagg":
-      return <RedFlagsView findings={findings} />;
+      return <RedFlagsView findings={findings} flags={run.report?.red_flags} />;
     case "kilder":
       return <SourcesView sources={sources} findings={findings} />;
   }
