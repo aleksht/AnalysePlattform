@@ -3,9 +3,7 @@ import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Logg inn" };
 
-export default async function LoginPage({ searchParams }: PageProps<"/login">) {
-  const { feil } = await searchParams;
-
+export default function LoginPage() {
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
@@ -18,11 +16,6 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
             Hva kunder, ansatte og markedet faktisk mener.
           </p>
         </div>
-        {feil === "lenke" && (
-          <p className="mb-4 rounded-md bg-neg-bg px-3 py-2 text-sm text-neg">
-            Lenken er ugyldig eller utløpt. Be om en ny.
-          </p>
-        )}
         <div className="card p-6">
           <LoginForm />
         </div>
