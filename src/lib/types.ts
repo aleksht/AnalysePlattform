@@ -31,6 +31,12 @@ export type Stock = {
   sentiment_label: SentimentLabel | null;
   last_run_at: string | null;
   sentiment_trend: "bedre" | "verre" | "uendret" | "ny" | null;
+  price_symbol: string | null;
+  last_price: number | null;
+  price_change_pct: number | null;
+  price_currency: string | null;
+  price_updated_at: string | null;
+  price_error: string | null;
   weekly_auto: boolean;
   created_at: string;
 };

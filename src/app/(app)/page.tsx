@@ -1,11 +1,21 @@
-import { getLibrary, getSparklines } from "@/lib/data";
+import { after } from "next/server";
+import { getLibrary, getPriceSparklines, getSparklines } from "@/lib/data";
+import { requireUser } from "@/lib/auth";
+import { refreshStalePrices } from "@/lib/prices/refresh";
 import { StockCard } from "@/components/stock-card";
 import { AddStockForm, FolderMenu, NewFolderForm } from "@/components/library-forms";
 import { Container, SectionTitle } from "@/components/container";
 import type { Folder, Stock } from "@/lib/types";
 
 export default async function HomePage() {
-  const [{ folders, stocks }, sparks] = await Promise.all([getLibrary(), getSparklines()]);
+  const { user } = await requireUser();
+  const [{ folders, stocks }, sparks, priceSparks] = await Promise.all([
+    getLibrary(),
+    getSparklines(),
+    getPriceSparklines(),
+  ]);
+  // Oppdater gamle kurser i bakgrunnen; nye tall vises ved neste visning
+  after(() => refreshStalePrices({ userId: user.id }).catch((e) => console.warn("Kursoppdatering:", e)));
 
   const byFolder = new Map<string | null, Stock[]>();
   for (const s of stocks) {
@@ -67,7 +77,13 @@ export default async function HomePage() {
               ) : (
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   {list.map((s) => (
-                    <StockCard key={s.id} stock={s} spark={sparks.get(s.id)} tone={gray ? "white" : "gray"} />
+                    <StockCard
+                      key={s.id}
+                      stock={s}
+                      spark={sparks.get(s.id)}
+                      priceSpark={priceSparks.get(s.id)}
+                      tone={gray ? "white" : "gray"}
+                    />
                   ))}
                 </div>
               )}

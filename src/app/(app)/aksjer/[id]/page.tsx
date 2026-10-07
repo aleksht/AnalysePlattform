@@ -2,7 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { getActiveRun, getFolders, getLastFailedRun, getLatestResearch, getStock } from "@/lib/data";
+import { after } from "next/server";
+import {
+  getActiveRun,
+  getFolders,
+  getLastFailedRun,
+  getLatestResearch,
+  getPriceHistory,
+  getRunHistory,
+  getStock,
+} from "@/lib/data";
+import { refreshStalePrices } from "@/lib/prices/refresh";
+import { yahooSymbol } from "@/lib/prices/symbol";
+import { PriceChart } from "@/components/price-chart";
 import { parseTab, STOCK_TABS, type TabSlug } from "@/lib/tabs";
 import { formatDate, formatUsd } from "@/lib/format";
 import type { Finding, Stock } from "@/lib/types";
@@ -32,11 +44,21 @@ export async function generateMetadata({ params }: PageProps<"/aksjer/[id]">): P
 export default async function StockPage({ params, searchParams }: PageProps<"/aksjer/[id]">) {
   const { id } = await params;
   const tab = parseTab((await searchParams).fane);
-  const [stock, folders] = await Promise.all([loadStock(id), getFolders()]);
-  const [research, activeRunId, failedRun] = await Promise.all([
+  const [initialStock, folders] = await Promise.all([loadStock(id), getFolders()]);
+  let stock = initialStock;
+  // Aldri hentet kurs: hent nå, så grafen vises med en gang. Ellers oppdateres gamle kurser i bakgrunnen.
+  if (!stock.price_updated_at) {
+    await refreshStalePrices({ stockIds: [stock.id], force: true }).catch(() => {});
+    stock = await loadStock(id);
+  } else {
+    after(() => refreshStalePrices({ stockIds: [stock.id] }).catch(() => {}));
+  }
+  const [research, activeRunId, failedRun, prices, history] = await Promise.all([
     getLatestResearch(stock.id),
     getActiveRun(stock.id),
     getLastFailedRun(stock.id),
+    getPriceHistory(stock.id),
+    getRunHistory(stock.id),
   ]);
   const folder = folders.find((f) => f.id === stock.folder_id);
 
@@ -126,6 +148,30 @@ export default async function StockPage({ params, searchParams }: PageProps<"/ak
         </section>
       )}
 
+      <section aria-label="Kurs" className="pb-16">
+        <Container>
+          {prices.length >= 2 ? (
+            <div className="card p-6 sm:p-8">
+              <PriceChart
+                points={prices}
+                currency={stock.price_currency}
+                runs={history.map((h) => ({ date: h.finished_at.slice(0, 10), label: h.label }))}
+              />
+              <p className="mt-3 text-xs text-muted">
+                Sluttkurser fra Yahoo Finance ({yahooSymbol(stock)}).
+                {stock.price_updated_at && ` Oppdatert ${formatDate(stock.price_updated_at)}.`}
+              </p>
+            </div>
+          ) : (
+            <p className="rounded-2xl bg-surface-2 px-5 py-4 text-center text-sm text-muted">
+              {stock.price_error
+                ? `Fant ikke kurs: ${stock.price_error}. Sjekk ticker og børs, eller sett Yahoo-symbol under «Rediger» nederst.`
+                : "Kurs hentes …"}
+            </p>
+          )}
+        </Container>
+      </section>
+
       <section
         aria-label={STOCK_TABS.find((t) => t.slug === tab)?.label}
         className={dark ? "bg-inverse py-16 text-inverse-fg sm:py-20" : "bg-surface-2 py-16 sm:py-20"}
@@ -144,7 +190,7 @@ export default async function StockPage({ params, searchParams }: PageProps<"/ak
               {formatUsd(research.run.cost_usd)}.
             </p>
           )}
-          <StockSettings stock={stock} folders={folders} />
+          <StockSettings stock={stock} folders={folders} defaultSymbol={yahooSymbol({ ...stock, price_symbol: null })} />
         </Container>
       </section>
     </>
