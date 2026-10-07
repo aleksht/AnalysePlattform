@@ -10,6 +10,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // PDF-generering bruker Node-spesifikke deler og skal ikke pakkes av Next
+  serverExternalPackages: ["@react-pdf/renderer"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

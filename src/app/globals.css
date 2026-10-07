@@ -10,9 +10,10 @@
   --border: #d2d2d7;
   --fg: #1d1d1f;
   --muted: #6e6e73;
-  --accent: #0066cc; /* lenker og tekst */
+  --brand: #00a160; /* grønnfargen fra logoen */
+  --accent: #007a48; /* lenker og tekst, mørkere grønn for kontrast 5,4:1 */
   --accent-fg: #ffffff;
-  --btn: #0071e3; /* knapper med hvit tekst */
+  --btn: #007a48; /* knapper med hvit tekst */
   --nav: rgba(250, 250, 252, 0.82);
   --pos: #248a3d;
   --pos-bg: #e8f5ec;
@@ -26,7 +27,7 @@
   --inverse-surface: #1d1d1f;
   --inverse-fg: #f5f5f7;
   --inverse-muted: #a1a1a6;
-  --series-1: #2a78d6; /* datalinje, validert mot lys flate */
+  --series-1: #00a160; /* datalinje i logogrønn, validert mot lys flate */
   color-scheme: light;
 }
 
@@ -38,9 +39,10 @@
   --border: #424245;
   --fg: #f5f5f7;
   --muted: #a1a1a6;
-  --accent: #2997ff;
+  --brand: #00a160;
+  --accent: #33c784; /* lysere grønn for lenker på mørk bakgrunn */
   --accent-fg: #ffffff;
-  --btn: #0071e3;
+  --btn: #007a48;
   --nav: rgba(22, 22, 23, 0.8);
   --pos: #30d158;
   --pos-bg: #0f2a17;
@@ -54,7 +56,7 @@
   --inverse-surface: #2c2c2e;
   --inverse-fg: #f5f5f7;
   --inverse-muted: #a1a1a6;
-  --series-1: #3987e5; /* datalinje, validert mot mørk flate */
+  --series-1: #00a160; /* datalinje i logogrønn, validert mot mørk flate */
   color-scheme: dark;
 }
 
@@ -67,6 +69,7 @@
   --color-muted: var(--muted);
   --color-accent: var(--accent);
   --color-accent-fg: var(--accent-fg);
+  --color-brand: var(--brand);
   --color-btn: var(--btn);
   --color-nav: var(--nav);
   --color-inverse: var(--inverse);

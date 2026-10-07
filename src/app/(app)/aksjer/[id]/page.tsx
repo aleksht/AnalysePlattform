@@ -108,9 +108,9 @@ export default async function StockPage({ params, searchParams }: PageProps<"/ak
               <Link href={`/aksjer/${stock.id}/rapport`} className="link">
                 Les hele rapporten ›
               </Link>
-              <Link href={`/aksjer/${stock.id}?fane=kilder`} className="link">
-                Se kildene ›
-              </Link>
+              <a href={`/aksjer/${stock.id}/rapport/pdf`} download className="link">
+                Last ned PDF ›
+              </a>
             </div>
           )}
         </div>

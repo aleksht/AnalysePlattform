@@ -79,7 +79,13 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
           <Link href={`/aksjer/${id}`} className="text-sm text-muted hover:text-fg">
             ← {stock.name}
           </Link>
-          <span className="hidden text-xs text-muted sm:inline">Utskriftsvennlig: bruk nettleserens utskrift</span>
+          <a
+            href={`/aksjer/${id}/rapport/pdf${isLatest ? "" : `?kjoring=${run.id}`}`}
+            download
+            className="btn-primary"
+          >
+            Last ned PDF
+          </a>
         </div>
         <div>
           <p className="text-sm text-muted">
