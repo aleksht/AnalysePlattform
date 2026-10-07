@@ -16,11 +16,18 @@ type StockRow = {
 /** Kurser regnes som ferske i så mange timer. */
 const FRESH_HOURS = 6;
 
-/** Henter og lagrer kurser for én aksje. Første gang 5 år, deretter siste måned. */
+/** Under så mange lagrede kurser henter vi full historikk (5 år) på nytt. */
+const MIN_STORED_POINTS = 1000;
+
+/** Henter og lagrer kurser for én aksje. Full historikk til den er på plass, deretter siste måned. */
 async function refreshOne(db: SupabaseClient, stock: StockRow) {
   const symbol = yahooSymbol(stock);
   try {
-    const series = await fetchPrices(symbol, stock.price_updated_at ? "1mo" : "5y");
+    const { count } = await db
+      .from("stock_prices")
+      .select("date", { count: "exact", head: true })
+      .eq("stock_id", stock.id);
+    const series = await fetchPrices(symbol, (count ?? 0) < MIN_STORED_POINTS ? "5y" : "1mo");
     if (series.points.length > 0) {
       const rows = series.points.map((p) => ({ stock_id: stock.id, user_id: stock.user_id, date: p.date, close: p.close }));
       const { error } = await db.from("stock_prices").upsert(rows, { onConflict: "stock_id,date" });
