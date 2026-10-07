@@ -165,28 +165,49 @@ export async function getWorkerHealth() {
 
 export type PricePoint = { date: string; close: number };
 
+export type PriceSpark = { values: number[]; from: string; to: string };
+
+/** Supabase gir maks 1000 rader per spørring; hent side for side. */
+async function fetchAllPrices<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  max = 20000,
+): Promise<T[]> {
+  const size = 1000;
+  const out: T[] = [];
+  for (let from = 0; from < max; from += size) {
+    const { data, error } = await page(from, from + size - 1);
+    if (error) throw new Error(error.message);
+    out.push(...(data ?? []));
+    if (!data || data.length < size) break;
+  }
+  return out;
+}
+
 /** Kurser per aksje for siste år, tynnet ut til omtrent ukentlige punkter (til kortene på forsiden). */
-export async function getPriceSparklines(): Promise<Map<string, number[]>> {
+export async function getPriceSparklines(): Promise<Map<string, PriceSpark>> {
   const { supabase } = await requireUser();
   const since = new Date(Date.now() - 366 * 86400_000).toISOString().slice(0, 10);
-  const { data } = await supabase
-    .from("stock_prices")
-    .select("stock_id, date, close")
-    .gte("date", since)
-    .order("date")
-    .limit(20000);
-  const all = new Map<string, number[]>();
-  for (const r of data ?? []) {
-    const list = all.get(r.stock_id as string) ?? [];
-    list.push(Number(r.close));
-    all.set(r.stock_id as string, list);
+  const rows = await fetchAllPrices<{ stock_id: string; date: string; close: number }>((from, to) =>
+    supabase
+      .from("stock_prices")
+      .select("stock_id, date, close")
+      .gte("date", since)
+      .order("stock_id")
+      .order("date")
+      .range(from, to),
+  );
+  const all = new Map<string, PricePoint[]>();
+  for (const r of rows) {
+    const list = all.get(r.stock_id) ?? [];
+    list.push({ date: r.date, close: Number(r.close) });
+    all.set(r.stock_id, list);
   }
-  const out = new Map<string, number[]>();
+  const out = new Map<string, PriceSpark>();
   for (const [id, list] of all) {
     const step = Math.max(1, Math.floor(list.length / 60));
     const thinned = list.filter((_, i) => i % step === 0);
     if (thinned.at(-1) !== list.at(-1)) thinned.push(list.at(-1)!);
-    out.set(id, thinned);
+    out.set(id, { values: thinned.map((p) => p.close), from: list[0].date, to: list.at(-1)!.date });
   }
   return out;
 }
@@ -194,13 +215,11 @@ export async function getPriceSparklines(): Promise<Map<string, number[]>> {
 /** Alle lagrede sluttkurser for en aksje, eldste først. */
 export async function getPriceHistory(stockId: string): Promise<PricePoint[]> {
   const { supabase } = await requireUser();
-  const { data } = await supabase
-    .from("stock_prices")
-    .select("date, close")
-    .eq("stock_id", stockId)
-    .order("date")
-    .limit(3000);
-  return (data ?? []).map((r) => ({ date: r.date as string, close: Number(r.close) }));
+  const rows = await fetchAllPrices<{ date: string; close: number }>(
+    (from, to) => supabase.from("stock_prices").select("date, close").eq("stock_id", stockId).order("date").range(from, to),
+    5000,
+  );
+  return rows.map((r) => ({ date: r.date, close: Number(r.close) }));
 }
 
 /** Samlet stemning for de siste kjøringene per aksje, eldste først (til minikurvene på forsiden). */

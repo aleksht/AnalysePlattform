@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { SentimentLabel, Stock } from "@/lib/types";
+import type { PriceSpark } from "@/lib/data";
 import { formatDate, formatPct, formatPrice } from "@/lib/format";
 import { TrendBadge } from "./trend-badge";
 
@@ -39,17 +40,22 @@ function Sparkline({ values, stroke, scale }: { values: number[]; stroke: string
 export function StockCard({
   stock,
   spark = [],
-  priceSpark = [],
+  priceSpark,
   tone = "white",
 }: {
   stock: Stock;
   spark?: number[];
-  priceSpark?: number[];
+  priceSpark?: PriceSpark;
   tone?: "white" | "gray";
 }) {
   const s = stock.sentiment_label ? SENTIMENT_TEXT[stock.sentiment_label] : null;
-  const yearChange =
-    priceSpark.length >= 2 ? ((priceSpark[priceSpark.length - 1] - priceSpark[0]) / priceSpark[0]) * 100 : null;
+  const pv = priceSpark?.values ?? [];
+  const yearChange = pv.length >= 2 ? ((pv[pv.length - 1] - pv[0]) / pv[0]) * 100 : null;
+  // «Siste år» bare når vi faktisk har et helt år med kurser
+  const fullYear =
+    priceSpark != null &&
+    new Date(priceSpark.to).getTime() - new Date(priceSpark.from).getTime() >= 350 * 86400_000;
+  const periodLabel = fullYear ? "Kurs siste år" : `Kurs siden ${formatDate(priceSpark?.from)}`;
   const day = stock.price_change_pct != null ? Number(stock.price_change_pct) : null;
   return (
     <Link
@@ -84,11 +90,11 @@ export function StockCard({
           <TrendBadge direction={stock.sentiment_trend} />
         </span>
       </div>
-      {priceSpark.length >= 2 ? (
+      {pv.length >= 2 ? (
         <div>
-          <Sparkline values={priceSpark} stroke={yearChange! >= 0 ? "stroke-pos" : "stroke-neg"} scale="auto" />
+          <Sparkline values={pv} stroke={yearChange! >= 0 ? "stroke-pos" : "stroke-neg"} scale="auto" />
           <div className="mt-1 text-xs text-muted tnum">
-            Kurs siste år: <span className={yearChange! >= 0 ? "text-pos" : "text-neg"}>{formatPct(yearChange)}</span>
+            {periodLabel}: <span className={yearChange! >= 0 ? "text-pos" : "text-neg"}>{formatPct(yearChange)}</span>
           </div>
         </div>
       ) : (
