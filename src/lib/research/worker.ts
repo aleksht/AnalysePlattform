@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { RefusalError } from "./agent";
+import { describeError } from "./errors";
 import { MIN_MS_FOR_REQUEST } from "./config";
 import { CATEGORIES, STEP_LABELS, type Step } from "./schema";
 import { computeSentiment } from "./scoring";
@@ -42,6 +42,7 @@ export async function runWorker(maxMs = 270_000): Promise<{ processed: number; p
     const step = (data as StepRow[] | null)?.[0];
     if (!step) break;
     const outcome = await processStep(db, step, deadline);
+    await refreshRunUsage(db, step.run_id);
     await finalizeRunIfComplete(db, step.run_id);
     processed++;
     // Et steg som ga fra seg kontrollen, betyr at tiden er brukt opp i denne runden
@@ -103,17 +104,38 @@ async function processStep(
       return "done";
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(`Steg ${step.step} i kjøring ${step.run_id} feilet:`, message);
-    const final = err instanceof RefusalError || step.attempts >= MAX_ATTEMPTS;
-    const backoffSec = 30 * 2 ** (step.attempts - 1);
+    const info = describeError(err, step.attempts);
+    console.error(`Steg ${step.step} i kjøring ${step.run_id} feilet:`, err instanceof Error ? err.message : err);
+    const final = !info.retryable || step.attempts >= MAX_ATTEMPTS;
     await save({
       status: final ? "failed" : "queued",
-      error: message.slice(0, 500),
-      locked_until: final ? null : new Date(Date.now() + backoffSec * 1000).toISOString(),
+      error: info.message.slice(0, 500),
+      locked_until: final ? null : new Date(Date.now() + info.backoffSec * 1000).toISOString(),
     });
     return final ? "failed" : "retry";
   }
+}
+
+/**
+ * Summerer forbruk og kostnad fra stegene inn i kjøringen. Kjøres etter hvert steg,
+ * så kostnaden er oppdatert også mens kjøringen pågår og for avbrutte kjøringer.
+ */
+export async function refreshRunUsage(db: SupabaseClient, runId: string) {
+  const { data } = await db.from("run_steps").select("usage").eq("run_id", runId);
+  const usage = sumUsage((data ?? []).map((s) => (s.usage as Partial<Usage>) ?? {}));
+  await db
+    .from("research_runs")
+    .update({
+      model: usage.models.join(", ") || undefined,
+      input_tokens: usage.input_tokens,
+      output_tokens: usage.output_tokens,
+      cache_read_tokens: usage.cache_read_tokens,
+      cache_write_tokens: usage.cache_write_tokens,
+      web_searches: usage.web_searches,
+      web_fetches: usage.web_fetches,
+      cost_usd: estimateCost(usage),
+    })
+    .eq("id", runId);
 }
 
 /** Avslutter kjøringen når alle steg er ferdige: summerer kostnad, regner ut stemning og oppdaterer aksjen. */

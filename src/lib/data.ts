@@ -1,6 +1,6 @@
 import "server-only";
 import { requireUser } from "@/lib/auth";
-import type { CompletedRun, Finding, Folder, ResearchRun, Source, Stock } from "@/lib/types";
+import type { CompletedRun, Finding, Folder, Source, Stock } from "@/lib/types";
 
 export async function getLibrary() {
   const { supabase } = await requireUser();
@@ -27,17 +27,6 @@ export async function getFolders() {
   return data as Folder[];
 }
 
-export async function getRuns(limit = 50) {
-  const { supabase } = await requireUser();
-  const { data, error } = await supabase
-    .from("research_runs")
-    .select("*, stocks(name, ticker)")
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return data as (ResearchRun & { stocks: { name: string; ticker: string } | null })[];
-}
-
 export async function getActiveRun(stockId: string) {
   const { supabase } = await requireUser();
   const { data } = await supabase
@@ -61,7 +50,16 @@ export async function getLatestResearch(stockId: string, runId?: string) {
     supabase.from("findings").select("*").eq("run_id", run.id).order("published_at", { ascending: false, nullsFirst: false }),
     supabase.from("sources").select("*").eq("run_id", run.id).order("published_at", { ascending: false, nullsFirst: false }),
   ]);
+  // Er dette den nyeste kjøringen for aksjen (uansett status)?
+  const { data: newest } = await supabase
+    .from("research_runs")
+    .select("id")
+    .eq("stock_id", stockId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
   return {
+    isLatest: newest?.id === run.id,
     run: run as CompletedRun,
     findings: (findings.data ?? []) as Finding[],
     sources: (sources.data ?? []) as Source[],
@@ -116,4 +114,51 @@ export async function getRunHistory(stockId: string, limit = 26): Promise<RunHis
       };
     })
     .reverse();
+}
+
+export type CostRun = {
+  id: string;
+  stock_id: string;
+  status: string;
+  trigger: string;
+  created_at: string;
+  cost_usd: number;
+  input_tokens: number;
+  output_tokens: number;
+  web_searches: number;
+  model: string | null;
+  stocks: { name: string; ticker: string } | null;
+};
+
+/** Alle kjøringer med kostnad, nyeste først. */
+export async function getCostRuns(limit = 1000) {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase
+    .from("research_runs")
+    .select("id, stock_id, status, trigger, created_at, cost_usd, input_tokens, output_tokens, web_searches, model, stocks(name, ticker)")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map((r) => ({ ...r, cost_usd: Number(r.cost_usd) })) as unknown as CostRun[];
+}
+
+export async function getUserSettings() {
+  const { supabase } = await requireUser();
+  const { data } = await supabase.from("user_settings").select("monthly_budget_usd").maybeSingle();
+  // Ingen rad betyr standardbudsjettet på 25 USD
+  return { monthlyBudgetUsd: data ? (data.monthly_budget_usd == null ? null : Number(data.monthly_budget_usd)) : 25 };
+}
+
+/** Siste aktivitet fra arbeideren og kjøringer som har ventet lenge. Brukes i systemstatus. */
+export async function getWorkerHealth() {
+  const { supabase } = await requireUser();
+  const [{ data: lastStep }, { data: waiting }] = await Promise.all([
+    supabase.from("run_steps").select("updated_at").order("updated_at", { ascending: false }).limit(1).maybeSingle(),
+    supabase
+      .from("research_runs")
+      .select("id, created_at")
+      .eq("status", "queued")
+      .lt("created_at", new Date(Date.now() - 5 * 60_000).toISOString()),
+  ]);
+  return { lastActivity: (lastStep?.updated_at as string | undefined) ?? null, stuckRuns: waiting?.length ?? 0 };
 }

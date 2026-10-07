@@ -10,7 +10,7 @@ import { SentimentBadge } from "@/components/sentiment-badge";
 import { StockTabs } from "@/components/stock-tabs";
 import { StockSettings } from "@/components/stock-settings";
 import { EmptyState } from "@/components/empty-state";
-import { RunControl } from "@/components/run-control";
+import { RetryFailedButton, RunControl } from "@/components/run-control";
 import { TrendBadge } from "@/components/trend-badge";
 import { CategoryView, ManagementView, RedFlagsView, SourcesView } from "@/components/findings";
 import { formatUsd } from "@/lib/format";
@@ -78,12 +78,13 @@ export default async function StockPage({ params, searchParams }: PageProps<"/ak
         </div>
         {failedRun && !activeRunId && (
           <p className="mt-4 rounded-md bg-neg-bg px-3 py-2 text-sm text-neg">
-            Siste research feilet: {failedRun.error ?? "ukjent feil"}. Kjør på nytt for å prøve igjen.
+            Siste research feilet: {failedRun.error ?? "ukjent feil"}. <RetryFailedButton runId={failedRun.id} />
           </p>
         )}
-        {research?.run.error && (
+        {research?.run.error && !activeRunId && !failedRun && (
           <p className="mt-4 rounded-md bg-warn-bg px-3 py-2 text-sm text-warn">
-            Noen deler av siste research feilet: {research.run.error}
+            Noen deler av siste research feilet: {research.run.error}{" "}
+            {research.isLatest && <RetryFailedButton runId={research.run.id} />}
           </p>
         )}
       </div>

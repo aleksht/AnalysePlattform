@@ -133,3 +133,18 @@ export async function setWeeklyAuto(formData: FormData) {
   revalidatePath("/innstillinger");
   revalidatePath(`/aksjer/${id}`);
 }
+
+export async function updateBudget(_prev: FormState, formData: FormData): Promise<FormState> {
+  const raw = String(formData.get("budget") ?? "").trim().replace(",", ".");
+  const value = raw === "" ? null : Number(raw);
+  if (value !== null && (!Number.isFinite(value) || value < 0 || value > 10000)) {
+    return { error: "Skriv inn et beløp mellom 0 og 10 000, eller la feltet stå tomt for ingen grense." };
+  }
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase
+    .from("user_settings")
+    .upsert({ user_id: user.id, monthly_budget_usd: value, updated_at: new Date().toISOString() });
+  if (error) return { error: "Kunne ikke lagre budsjettet." };
+  revalidatePath("/innstillinger");
+  return { ok: true };
+}

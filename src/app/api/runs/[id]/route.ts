@@ -10,7 +10,7 @@ export async function GET(_request: NextRequest, ctx: RouteContext<"/api/runs/[i
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("research_runs")
-    .select("id, status, current_step, steps_total, steps_done, cost_usd, error, run_steps(step, status, ord)")
+    .select("id, status, current_step, steps_total, steps_done, cost_usd, error, created_at, started_at, run_steps(step, status, ord, error)")
     .eq("id", id)
     .maybeSingle();
 

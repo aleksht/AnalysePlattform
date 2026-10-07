@@ -11,14 +11,14 @@ Webapp for aksjeresearch: hva kunder, ansatte og markedet faktisk mener om selsk
 | 1 | Innlogging, mapper, aksjer, aksjeside med tomme faner | ✅ |
 | 2 | Researchagent, lagring og visning av funn med kilder | ✅ |
 | 3 | Innsiktsmodus, trend over tid, ukentlig kjøring | ✅ |
-| 4 | Finpuss, feilhåndtering, kostnadsoversikt | – |
+| 4 | Finpuss, feilhåndtering, kostnadsoversikt | ✅ |
 
 ## Oppsett
 
 ### 1. Supabase
 
 1. Lag et prosjekt i regionen **eu-north-1 (Stockholm)**.
-2. Kjør migrasjonene i `supabase/migrations/` i rekkefølge. Bruk enten SQL Editor i dashbordet, eller `supabase link` og deretter `supabase db push`.
+2. Kjør migrasjonene i `supabase/migrations/` i rekkefølge (0001–0005). Bruk enten SQL Editor i dashbordet, eller `supabase link` og deretter `supabase db push`.
 3. Gå til **Authentication → URL Configuration**:
    - Site URL: `https://<din-app>.vercel.app`
    - Redirect URLs: `https://<din-app>.vercel.app/auth/confirm` og `http://localhost:3000/auth/confirm`
@@ -72,7 +72,16 @@ Resultatet vises i rapportvisningen (`/aksjer/[id]/rapport`).
 
 **Ukentlig kjøring:** pg_cron legger aksjer med ukentlig oppdatering i køen hver mandag kl. 04:00 UTC (`enqueue_weekly_runs`). Ukentlig oppdatering slås av og på per aksje under Innstillinger.
 
-**Kostnad:** Tokenforbruk og antall søk lagres per steg og per kjøring. Kostnaden estimeres ut fra prisene i `src/lib/research/config.ts` og vises på innstillingssiden.
+**Kostnad og budsjett:**
+- Tokenforbruk og antall søk lagres per steg og summeres løpende inn i kjøringen, også for avbrutte kjøringer.
+- Kostnaden estimeres ut fra prisene i `src/lib/research/config.ts`.
+- Under Innstillinger ser du kostnad per måned, per aksje og per kjøring, og du kan sette et månedsbudsjett (standard 25 USD). Når budsjettet er brukt opp, kan nye kjøringer ikke startes, og ukentlige kjøringer hoppes over.
+
+**Feilhåndtering:**
+- Feil fra Anthropic klassifiseres i `src/lib/research/errors.ts`. Ugyldig nøkkel, manglende kreditt og avviste forespørsler feiler med en gang, med en norsk forklaring.
+- Overbelastning, grense for antall forespørsler og nettverksfeil prøves på nytt med økende ventetid.
+- Feilede steg kan prøves på nytt fra aksjesiden uten å kjøre hele researchen igjen.
+- Under Innstillinger viser Systemstatus manglende konfigurasjon og kjøringer som henger.
 
 ## Struktur
 
@@ -94,3 +103,7 @@ src/app/api/jobs/      Arbeideren (beskyttet med JOB_SECRET)
 - Alle tabeller har Row Level Security, så hver bruker ser bare sine egne data.
 - Funn og kilder kan bare skrives av bakgrunnsjobben, som bruker service-rollen.
 - API-nøkler finnes bare i miljøvariabler på serveren. Kun `NEXT_PUBLIC_*` sendes til nettleseren.
+
+## På iPad og mobil
+
+Åpne appen i Safari, trykk Del-knappen og velg «Legg til på Hjem-skjerm». Da får Aksjeinnsikt et eget ikon og åpnes som en app.
