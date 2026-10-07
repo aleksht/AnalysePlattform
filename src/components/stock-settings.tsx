@@ -5,7 +5,15 @@ import { deleteStock, updateStock } from "@/lib/actions/library";
 import type { Folder, Stock } from "@/lib/types";
 import { EXCHANGES } from "./library-forms";
 
-export function StockSettings({ stock, folders }: { stock: Stock; folders: Folder[] }) {
+export function StockSettings({
+  stock,
+  folders,
+  defaultSymbol,
+}: {
+  stock: Stock;
+  folders: Folder[];
+  defaultSymbol: string;
+}) {
   const [state, action, pending] = useActionState(updateStock, {});
   return (
     <details className="card group">
@@ -38,6 +46,17 @@ export function StockSettings({ stock, folders }: { stock: Stock; folders: Folde
               <option value="">Uten mappe</option>
               {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium" htmlFor="edit-symbol">Yahoo-symbol (valgfritt)</label>
+            <input
+              id="edit-symbol"
+              name="price_symbol"
+              defaultValue={stock.price_symbol ?? ""}
+              placeholder={defaultSymbol}
+              className="input font-mono uppercase"
+            />
+            <p className="mt-1 text-xs text-muted">Brukes for kurs. Tomt felt gir {defaultSymbol}.</p>
           </div>
           <label className="flex items-center gap-2 self-end pb-2 text-sm">
             <input type="checkbox" name="weekly_auto" defaultChecked={stock.weekly_auto} className="h-4 w-4 accent-[var(--accent)]" />

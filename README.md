@@ -18,7 +18,7 @@ Webapp for aksjeresearch: hva kunder, ansatte og markedet faktisk mener om selsk
 ### 1. Supabase
 
 1. Lag et prosjekt i regionen **eu-north-1 (Stockholm)**.
-2. Kjør migrasjonene i `supabase/migrations/` i rekkefølge (0001–0005). Bruk enten SQL Editor i dashbordet, eller `supabase link` og deretter `supabase db push`.
+2. Kjør migrasjonene i `supabase/migrations/` i rekkefølge (0001–0006). Bruk enten SQL Editor i dashbordet, eller `supabase link` og deretter `supabase db push`.
 3. Gå til **Authentication → Sign In / Providers**. Slå av «Allow new users to sign up» og la Email stå på.
 4. Gå til **Authentication → Users → Add user → Create new user** og legg inn hver bruker med e-post og passord. Huk av for **Auto Confirm User**. Innlogging skjer med e-post og passord, så det sendes ingen e-post fra Supabase.
 5. Hent nøklene under **Project Settings → API Keys**: én publishable-nøkkel og én secret-nøkkel.
@@ -73,6 +73,13 @@ Resultatet vises i rapportvisningen (`/aksjer/[id]/rapport`).
 - Overbelastning, grense for antall forespørsler og nettverksfeil prøves på nytt med økende ventetid.
 - Feilede steg kan prøves på nytt fra aksjesiden uten å kjøre hele researchen igjen.
 - Under Innstillinger viser Systemstatus manglende konfigurasjon og kjøringer som henger.
+
+## Aksjekurser
+
+- Daglige sluttkurser hentes fra Yahoo Finance (`src/lib/prices/yahoo.ts`) og lagres i `stock_prices`. Første gang hentes 5 år, deretter bare det som mangler.
+- Kursene oppdateres i bakgrunnen ved sidevisning når de er eldre enn 6 timer, og hver hverdag kl. 18:15 UTC via pg_cron (`/api/jobs/prices`).
+- Yahoo-symbolet lages fra ticker og børs, for eksempel MTRS + Nasdaq Stockholm → `MTRS.ST` og «NIBE B» → `NIBE-B.ST`. Symbolet kan overstyres per aksje under «Rediger».
+- Yahoo Finance er en uoffisiell kilde som kan endre seg uten varsel. All kontakt med Yahoo ligger i én fil, så kilden er enkel å bytte ut.
 
 ## Struktur
 

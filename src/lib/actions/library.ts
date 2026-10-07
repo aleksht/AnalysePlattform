@@ -1,6 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { refreshStalePrices } from "@/lib/prices/refresh";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
@@ -32,6 +35,11 @@ const stockInput = z.object({
     .max(60)
     .transform((v) => v || null),
   folder_id: optionalId,
+  price_symbol: z
+    .string()
+    .trim()
+    .max(30)
+    .transform((v) => (v ? v.toUpperCase() : null)),
 });
 
 // ---------------------------------------------------------------- Mapper
@@ -84,12 +92,20 @@ export async function createStock(_prev: FormState, formData: FormData): Promise
     ticker: formData.get("ticker") ?? "",
     exchange: formData.get("exchange") ?? "",
     folder_id: formData.get("folder_id") ?? "",
+    price_symbol: formData.get("price_symbol") ?? "",
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   const { supabase, user } = await requireUser();
-  const { error } = await supabase.from("stocks").insert({ ...parsed.data, user_id: user.id });
+  const { data: created, error } = await supabase
+    .from("stocks")
+    .insert({ ...parsed.data, user_id: user.id })
+    .select("id")
+    .single();
   if (error) return { error: "Kunne ikke legge til aksjen." };
+
+  // Hent kurser i bakgrunnen
+  after(() => refreshStalePrices({ stockIds: [created.id as string], force: true }));
 
   revalidatePath("/");
   return { ok: true };
@@ -102,15 +118,37 @@ export async function updateStock(_prev: FormState, formData: FormData): Promise
     ticker: formData.get("ticker") ?? "",
     exchange: formData.get("exchange") ?? "",
     folder_id: formData.get("folder_id") ?? "",
+    price_symbol: formData.get("price_symbol") ?? "",
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   const { supabase } = await requireUser();
+  const { data: before } = await supabase
+    .from("stocks")
+    .select("ticker, exchange, price_symbol")
+    .eq("id", id)
+    .maybeSingle();
   const { error } = await supabase
     .from("stocks")
     .update({ ...parsed.data, weekly_auto: formData.get("weekly_auto") === "on" })
     .eq("id", id);
   if (error) return { error: "Kunne ikke lagre endringene." };
+
+  // Nytt symbol: slett gamle kurser og hent på nytt
+  const symbolChanged =
+    before &&
+    (before.ticker !== parsed.data.ticker ||
+      (before.exchange ?? null) !== parsed.data.exchange ||
+      (before.price_symbol ?? null) !== parsed.data.price_symbol);
+  if (symbolChanged) {
+    const admin = createAdminClient();
+    await admin.from("stock_prices").delete().eq("stock_id", id);
+    await admin
+      .from("stocks")
+      .update({ last_price: null, price_change_pct: null, price_updated_at: null, price_error: null })
+      .eq("id", id);
+    after(() => refreshStalePrices({ stockIds: [id], force: true }));
+  }
 
   revalidatePath("/");
   revalidatePath(`/aksjer/${id}`);

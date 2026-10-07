@@ -163,6 +163,46 @@ export async function getWorkerHealth() {
   return { lastActivity: (lastStep?.updated_at as string | undefined) ?? null, stuckRuns: waiting?.length ?? 0 };
 }
 
+export type PricePoint = { date: string; close: number };
+
+/** Kurser per aksje for siste år, tynnet ut til omtrent ukentlige punkter (til kortene på forsiden). */
+export async function getPriceSparklines(): Promise<Map<string, number[]>> {
+  const { supabase } = await requireUser();
+  const since = new Date(Date.now() - 366 * 86400_000).toISOString().slice(0, 10);
+  const { data } = await supabase
+    .from("stock_prices")
+    .select("stock_id, date, close")
+    .gte("date", since)
+    .order("date")
+    .limit(20000);
+  const all = new Map<string, number[]>();
+  for (const r of data ?? []) {
+    const list = all.get(r.stock_id as string) ?? [];
+    list.push(Number(r.close));
+    all.set(r.stock_id as string, list);
+  }
+  const out = new Map<string, number[]>();
+  for (const [id, list] of all) {
+    const step = Math.max(1, Math.floor(list.length / 60));
+    const thinned = list.filter((_, i) => i % step === 0);
+    if (thinned.at(-1) !== list.at(-1)) thinned.push(list.at(-1)!);
+    out.set(id, thinned);
+  }
+  return out;
+}
+
+/** Alle lagrede sluttkurser for en aksje, eldste først. */
+export async function getPriceHistory(stockId: string): Promise<PricePoint[]> {
+  const { supabase } = await requireUser();
+  const { data } = await supabase
+    .from("stock_prices")
+    .select("date, close")
+    .eq("stock_id", stockId)
+    .order("date")
+    .limit(3000);
+  return (data ?? []).map((r) => ({ date: r.date as string, close: Number(r.close) }));
+}
+
 /** Samlet stemning for de siste kjøringene per aksje, eldste først (til minikurvene på forsiden). */
 export async function getSparklines(points = 8): Promise<Map<string, number[]>> {
   const { supabase } = await requireUser();
