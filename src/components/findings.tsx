@@ -1,5 +1,6 @@
 import type { Category, Finding, RunSection, Source, Trend } from "@/lib/types";
 import { TrendBadge } from "./trend-badge";
+import { describeToolErrors, significantToolErrors } from "@/lib/research/tool-errors";
 import { SOURCE_TYPE_LABELS, THEME_LABELS } from "@/lib/research/schema";
 import { hostOf } from "@/lib/research/sources";
 import { formatDate } from "@/lib/format";
@@ -109,11 +110,18 @@ export function CategoryView({
   }
 
   const themes = section.themes;
+  const searchErrors = significantToolErrors(section.tool_errors);
   const extraThemes = [...new Set(findings.map((f) => f.theme))].filter((t) => !themes.some((x) => x.theme === t));
 
   return (
     <div className="space-y-4">
       <p className="mx-auto max-w-[760px] pb-4 text-center text-xl leading-snug text-muted sm:text-[21px]">{section.summary}</p>
+      {Object.keys(searchErrors).length > 0 && (
+        <p className="mx-auto max-w-[760px] rounded-2xl bg-warn-bg px-5 py-3 text-center text-sm text-warn">
+          Søkeverktøyet hadde problemer i denne kategorien ({describeToolErrors(searchErrors)}). Grunnlaget kan være
+          tynnere enn vanlig. Kjør ny research for å prøve igjen.
+        </p>
+      )}
       {themes.map((t) => {
         const list = findings.filter((f) => f.theme === t.theme);
         const cov = COVERAGE[t.coverage];

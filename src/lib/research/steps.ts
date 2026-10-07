@@ -16,6 +16,8 @@ import {
 } from "./schema";
 import type { SeenSource } from "./sources";
 import type { Usage } from "./usage";
+import { MAX_STEP_ATTEMPTS, RETRYABLE_TOOL_ERRORS } from "./config";
+import { describeToolErrors } from "./tool-errors";
 import { runSynthesis, type SynthesisResult } from "./synthesis";
 
 /** Det som lagres i run_steps.state mellom funksjonskall. */
@@ -23,7 +25,11 @@ export type StepState = {
   research?: ResearchState;
   notes?: string;
   sources?: SeenSource[];
+  toolErrors?: Record<string, number>;
 };
+
+/** Søket feilet midlertidig og ga for få kilder. Steget prøves på nytt fra start. */
+export class SearchUnavailableError extends Error {}
 
 type LinkedSource = { url: string; title: string | null };
 
@@ -39,6 +45,8 @@ export type CategoryResult = {
     source: LinkedSource;
   }[];
   dropped_findings?: number;
+  /** Feilkoder fra web search/fetch, f.eks. {"search:max_uses_exceeded": 2} */
+  tool_errors?: Record<string, number>;
 };
 
 export type OverviewResult = {
@@ -49,6 +57,7 @@ export type OverviewResult = {
     competitors: { name: string; note: string; source_url: string }[];
     coverage_note: string | null;
   } | null;
+  tool_errors?: Record<string, number>;
 };
 
 export type StepOutcome =
@@ -64,6 +73,8 @@ type Ctx = {
   step: Step;
   stock: StockContext;
   deadline: number;
+  /** Hvilket forsøk dette er (1, 2, 3 …) */
+  attempt: number;
 };
 
 /**
@@ -86,14 +97,27 @@ export async function advanceStep(ctx: Ctx, state: StepState | null, usage: Usag
       deadline: ctx.deadline,
     });
     if (r.kind === "yield") return { kind: "yield", state: { research: r.state }, usage: r.usage };
-    return { kind: "checkpoint", state: { notes: r.notes, sources: r.sources }, usage: r.usage };
+
+    // For få kilder fordi søket feilet midlertidig? Prøv steget på nytt i stedet for å lagre et tynt resultat.
+    const transient = Object.keys(r.toolErrors).some((k) => RETRYABLE_TOOL_ERRORS.includes(k.split(":")[1]));
+    if (transient && r.sources.length < 3 && ctx.attempt < MAX_STEP_ATTEMPTS) {
+      throw new SearchUnavailableError(
+        `Søkeverktøyet feilet midlertidig (${describeToolErrors(r.toolErrors)}). Prøver igjen.`,
+      );
+    }
+    return {
+      kind: "checkpoint",
+      state: { notes: r.notes, sources: r.sources, toolErrors: r.toolErrors },
+      usage: r.usage,
+    };
   }
 
   const notes = state.notes;
   const sources = state.sources ?? [];
+  const toolErrors = state.toolErrors && Object.keys(state.toolErrors).length > 0 ? state.toolErrors : undefined;
 
   if (ctx.step === "oversikt") {
-    if (!notes || sources.length === 0) return { kind: "done", result: { overview: null }, usage };
+    if (!notes || sources.length === 0) return { kind: "done", result: { overview: null, tool_errors: toolErrors }, usage };
     const ids = sources.map((s) => s.ref) as [string, ...string[]];
     const { data, usage: u } = await extractStructured({
       schema: overviewOutputSchema(ids),
@@ -117,13 +141,13 @@ export async function advanceStep(ctx: Ctx, state: StepState | null, usage: Usag
       coverage_note: data.coverage_note,
     };
     await saveSources(ctx, sources, [...overview.key_customers, ...overview.competitors].map((x) => x.source_url), null);
-    return { kind: "done", result: { overview }, usage: u };
+    return { kind: "done", result: { overview, tool_errors: toolErrors }, usage: u };
   }
 
   const category = ctx.step as Category;
   if (!notes || sources.length === 0) {
     await replaceFindings(ctx, category, []);
-    return { kind: "done", result: emptyCategoryResult(category), usage };
+    return { kind: "done", result: { ...emptyCategoryResult(category), tool_errors: toolErrors }, usage };
   }
 
   const ids = sources.map((s) => s.ref) as [string, ...string[]];
@@ -196,6 +220,7 @@ export async function advanceStep(ctx: Ctx, state: StepState | null, usage: Usag
     summary: output.summary,
     themes,
     dropped_findings: dropped,
+    tool_errors: toolErrors,
   };
   if (category === "ledelse") {
     result.key_points = (output.key_points ?? []).flatMap((k) => {

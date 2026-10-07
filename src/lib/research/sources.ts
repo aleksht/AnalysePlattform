@@ -107,6 +107,29 @@ export function collectSources(contents: unknown[], limit = 150): SeenSource[] {
   return list.map((s, i) => ({ ref: `S${i + 1}`, ...s }));
 }
 
+/** Teller feilkoder fra web search og web fetch (f.eks. max_uses_exceeded, too_many_requests). */
+export function collectToolErrors(contents: unknown[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  const visit = (node: unknown) => {
+    if (Array.isArray(node)) return node.forEach(visit);
+    if (!node || typeof node !== "object") return;
+    const o = node as Record<string, unknown>;
+    if (
+      (o.type === "web_search_tool_result_error" || o.type === "web_fetch_tool_result_error") &&
+      typeof o.error_code === "string"
+    ) {
+      const key = `${o.type === "web_fetch_tool_result_error" ? "fetch" : "search"}:${o.error_code}`;
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    for (const [k, v] of Object.entries(o)) {
+      if (k === "encrypted_content" || k === "encrypted_index" || k === "data" || k === "source") continue;
+      if (v && typeof v === "object") visit(v);
+    }
+  };
+  visit(contents);
+  return counts;
+}
+
 export function formatSourceList(sources: SeenSource[]): string {
   return sources
     .map(

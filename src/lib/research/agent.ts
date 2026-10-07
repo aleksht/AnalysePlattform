@@ -4,7 +4,7 @@ import type { z } from "zod";
 import { MAX_CONTINUATIONS, MIN_MS_FOR_REQUEST, RESEARCH_MODEL, TOOL_LIMITS } from "./config";
 import { EXTRACT_SYSTEM, RESEARCH_SYSTEM, extractUserPrompt, researchUserPrompt, type StockContext } from "./prompts";
 import type { ResearchStep } from "./schema";
-import { collectSources, formatSourceList, type SeenSource } from "./sources";
+import { collectSources, collectToolErrors, formatSourceList, type SeenSource } from "./sources";
 import { addApiUsage, type Usage } from "./usage";
 import { toStrictJsonSchema } from "./json-schema";
 
@@ -28,7 +28,7 @@ export type ResearchState = {
 
 export type ResearchProgress =
   | { kind: "yield"; state: ResearchState; usage: Usage }
-  | { kind: "done"; notes: string; sources: SeenSource[]; usage: Usage };
+  | { kind: "done"; notes: string; sources: SeenSource[]; toolErrors: Record<string, number>; usage: Usage };
 
 /**
  * Researchfasen: modellen søker og leser med web search og web fetch.
@@ -94,7 +94,13 @@ export async function runResearch(opts: {
     .join("")
     .trim();
 
-  return { kind: "done", notes, sources: collectSources(assistantContent), usage };
+  return {
+    kind: "done",
+    notes,
+    sources: collectSources(assistantContent),
+    toolErrors: collectToolErrors(assistantContent),
+    usage,
+  };
 }
 
 /**

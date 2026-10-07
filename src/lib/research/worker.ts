@@ -2,15 +2,14 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { describeError } from "./errors";
-import { MIN_MS_FOR_REQUEST } from "./config";
+import { MAX_PARALLEL_STEPS, MAX_STEP_ATTEMPTS, MIN_MS_FOR_REQUEST } from "./config";
 import { CATEGORIES, STEP_LABELS, type Step } from "./schema";
 import { computeSentiment } from "./scoring";
-import { advanceStep, type CategoryResult, type OverviewResult, type StepState } from "./steps";
+import { advanceStep, SearchUnavailableError, type CategoryResult, type OverviewResult, type StepState } from "./steps";
 import type { SynthesisResult } from "./synthesis";
 import { computeThemeScores } from "./trend";
 import { emptyUsage, estimateCost, sumUsage, type Usage } from "./usage";
 
-const MAX_ATTEMPTS = 3;
 /** Arbeideren tar ikke nye steg etter så lang tid, slik at det rekker å bli ferdig. */
 const CLAIM_WINDOW_MS = 90_000;
 
@@ -37,7 +36,10 @@ export async function runWorker(maxMs = 270_000): Promise<{ processed: number; p
 
   // Ta bare nye steg så lenge det er tid til minst ett API-kall
   while (Date.now() - start < CLAIM_WINDOW_MS && deadline - Date.now() >= MIN_MS_FOR_REQUEST) {
-    const { data, error } = await db.rpc("claim_next_step");
+    const { data, error } = await db.rpc("claim_next_step", {
+      p_max_attempts: MAX_STEP_ATTEMPTS,
+      p_max_parallel_per_run: MAX_PARALLEL_STEPS,
+    });
     if (error) throw new Error(`claim_next_step: ${error.message}`);
     const step = (data as StepRow[] | null)?.[0];
     if (!step) break;
@@ -84,7 +86,16 @@ async function processStep(
     // Ett steg kan gå gjennom flere faser i samme funksjonskall: research → lagre notater → uttrekk
     for (;;) {
       const outcome = await advanceStep(
-        { db, runId: run.id, stockId: run.stock_id, userId: step.user_id, step: step.step, stock, deadline },
+        {
+          db,
+          runId: run.id,
+          stockId: run.stock_id,
+          userId: step.user_id,
+          step: step.step,
+          stock,
+          deadline,
+          attempt: step.attempts,
+        },
         state,
         usage,
       );
@@ -106,9 +117,11 @@ async function processStep(
   } catch (err) {
     const info = describeError(err, step.attempts);
     console.error(`Steg ${step.step} i kjøring ${step.run_id} feilet:`, err instanceof Error ? err.message : err);
-    const final = !info.retryable || step.attempts >= MAX_ATTEMPTS;
+    const final = !info.retryable || step.attempts >= MAX_STEP_ATTEMPTS;
     await save({
       status: final ? "failed" : "queued",
+      // Midlertidig søkefeil: start researchen på nytt i stedet for å bygge videre på et tynt grunnlag
+      ...(err instanceof SearchUnavailableError ? { state: null } : {}),
       error: info.message.slice(0, 500),
       locked_until: final ? null : new Date(Date.now() + info.backoffSec * 1000).toISOString(),
     });
