@@ -138,7 +138,9 @@ function findingEntry(category: Category, sourceIds: NonEmpty) {
     evidence_strength: z
       .enum(STRENGTHS)
       .describe("sterk: primærkilde/navngitt kunde/tall. middels: troverdig sekundærkilde. svak: enkeltinnlegg, anonym, gammel"),
-    is_red_flag: z.boolean().describe("true for vesentlige negative funn en investor bør vite om"),
+    is_red_flag: z
+      .boolean()
+      .describe("true bare for vesentlige negative funn som hører til denne kategorien. Krever sentiment negativ."),
   });
 }
 
@@ -215,6 +217,15 @@ export function synthesisOutputSchema(findingIds: NonEmpty) {
     watch_points: z
       .array(z.object({ text: z.string(), finding_refs: refs }))
       .describe("2–4 ting investoren bør følge med på fremover"),
+    red_flags: z
+      .array(
+        z.object({
+          text: z.string().describe("Det negative forholdet, 1–2 setninger"),
+          category: z.enum(CATEGORIES).describe("Kategorien forholdet hører mest naturlig hjemme i"),
+          finding_refs: refs,
+        }),
+      )
+      .describe("Røde flagg slått sammen: ett punkt per forhold, de alvorligste først, maks 6"),
     data_gaps: z.array(z.string()).describe("Temaer med lite offentlig informasjon"),
   });
 }

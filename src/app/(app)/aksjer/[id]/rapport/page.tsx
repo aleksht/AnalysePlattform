@@ -58,13 +58,19 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
   // Nummererte kilder for punktene i rapporten
   const sourceIndex = new Map<string, number>();
   const cite = (refs: { url: string }[]) =>
-    refs.map((r) => {
+    [...new Map(refs.map((r) => [r.url, r])).values()].map((r) => {
       if (!sourceIndex.has(r.url)) sourceIndex.set(r.url, sourceIndex.size + 1);
       return { url: r.url, n: sourceIndex.get(r.url)! };
     });
   const sourceTitle = new Map(sources.map((s) => [s.url, s.title]));
 
-  const redFlags = findings.filter((f) => f.is_red_flag);
+  // Sammenslåtte røde flagg fra syntesen; eldre rapporter har bare flaggene per funn
+  const redFlags = report?.red_flags
+    ? report.red_flags.map((r, i) => ({ key: String(i), label: STEP_LABELS[r.category], text: r.text, refs: r.refs }))
+    : findings
+        .filter((f) => f.is_red_flag)
+        .slice(0, 8)
+        .map((f) => ({ key: f.id, label: STEP_LABELS[f.category], text: f.claim, refs: [{ url: f.source_url }] }));
   const sections = run.sections ?? {};
   const gaps = CATEGORIES.flatMap((c) =>
     (sections[c]?.themes ?? [])
@@ -160,11 +166,11 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
       {redFlags.length > 0 && (
         <Section title={`Røde flagg (${redFlags.length})`}>
           <ul className="space-y-4 text-[17px]">
-            {redFlags.slice(0, 8).map((f) => (
-              <li key={f.id} className="leading-relaxed">
-                <span className="text-xs font-medium uppercase tracking-wide text-muted">{STEP_LABELS[f.category]}</span>
+            {redFlags.map((f) => (
+              <li key={f.key} className="leading-relaxed">
+                <span className="text-xs font-medium uppercase tracking-wide text-muted">{f.label}</span>
                 <br />
-                {f.claim} <Cites refs={cite([{ url: f.source_url }])} />
+                {f.text} <Cites refs={cite(f.refs)} />
               </li>
             ))}
           </ul>

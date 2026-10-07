@@ -182,7 +182,7 @@ export async function advanceStep(ctx: Ctx, state: StepState | null, usage: Usag
       source_type: f.source_type,
       published_at: normalizeDate(f.published_at) ?? normalizeDate(src?.page_age),
       evidence_strength: f.evidence_strength,
-      is_red_flag: f.is_red_flag,
+      is_red_flag: f.is_red_flag && f.sentiment === "negativ",
     });
     if (candidate.success) findings.push(candidate.data);
     else dropped++;

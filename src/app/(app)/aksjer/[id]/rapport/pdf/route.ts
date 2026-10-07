@@ -18,14 +18,18 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/aksjer/[id]/
   const [stock, research, prices] = await Promise.all([getStock(id), getLatestResearch(id, runId), getPriceHistory(id)]);
   if (!stock || !research) return NextResponse.json({ error: "Fant ingen rapport" }, { status: 404 });
 
-  // Kursendring siste år, hvis vi har kurser
+  // Kursendring siste år. Mangler vi et helt år med kurser, oppgis perioden vi faktisk har.
   const yearAgo = new Date(Date.now() - 365 * 86400_000).toISOString().slice(0, 10);
   const start = prices.find((p) => p.date >= yearAgo);
   const last = prices.at(-1);
-  const priceYearChange = start && last && start !== last ? ((last.close - start.close) / start.close) * 100 : null;
+  const fullYear = prices.length > 0 && prices[0].date <= new Date(Date.now() - 350 * 86400_000).toISOString().slice(0, 10);
+  const priceChange =
+    start && last && start !== last
+      ? { pct: ((last.close - start.close) / start.close) * 100, since: fullYear ? null : start.date }
+      : null;
 
   const buffer = await renderToBuffer(
-    createElement(ReportPdf, { stock, run: research.run, findings: research.findings, sources: research.sources, priceYearChange }) as Parameters<typeof renderToBuffer>[0],
+    createElement(ReportPdf, { stock, run: research.run, findings: research.findings, sources: research.sources, priceChange }) as Parameters<typeof renderToBuffer>[0],
   );
 
   const date = (research.run.finished_at ?? new Date().toISOString()).slice(0, 10);

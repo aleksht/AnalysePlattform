@@ -200,7 +200,7 @@ export async function finalizeRunIfComplete(db: SupabaseClient, runId: string) {
       current_step: null,
       sections,
       findings_count: all.length,
-      red_flags: all.filter((f) => f.is_red_flag).length,
+      red_flags: synthesis?.report?.red_flags?.length ?? all.filter((f) => f.is_red_flag).length,
       theme_scores: themeScores,
       trend: synthesis?.trend ?? null,
       report: synthesis?.report ?? null,
