@@ -162,3 +162,23 @@ export async function getWorkerHealth() {
   ]);
   return { lastActivity: (lastStep?.updated_at as string | undefined) ?? null, stuckRuns: waiting?.length ?? 0 };
 }
+
+/** Samlet stemning for de siste kjøringene per aksje, eldste først (til minikurvene på forsiden). */
+export async function getSparklines(points = 8): Promise<Map<string, number[]>> {
+  const { supabase } = await requireUser();
+  const { data } = await supabase
+    .from("research_runs")
+    .select("stock_id, finished_at, theme_scores")
+    .eq("status", "done")
+    .order("finished_at", { ascending: false })
+    .limit(500);
+  const map = new Map<string, number[]>();
+  for (const r of data ?? []) {
+    const score = (r.theme_scores as { overall?: { score: number } | null } | null)?.overall?.score;
+    if (score == null) continue;
+    const list = map.get(r.stock_id as string) ?? [];
+    if (list.length < points) list.unshift(score);
+    map.set(r.stock_id as string, list);
+  }
+  return map;
+}

@@ -1,6 +1,6 @@
 export default function Loading() {
   return (
-    <div className="animate-pulse space-y-6" aria-label="Laster aksje">
+    <div className="mx-auto max-w-[1024px] animate-pulse space-y-6 px-[22px] py-16" aria-label="Laster aksje">
       <div className="space-y-3">
         <div className="h-4 w-32 rounded bg-surface-2" />
         <div className="h-8 w-56 rounded bg-surface-2" />

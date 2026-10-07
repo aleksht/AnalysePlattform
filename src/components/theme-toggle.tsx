@@ -17,7 +17,7 @@ export function ThemeToggle() {
       onClick={toggle}
       aria-label="Bytt mellom lyst og mørkt tema"
       title="Bytt tema"
-      className="flex h-9 w-9 items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg"
+      className="flex h-9 w-9 items-center justify-center rounded-full text-fg/80 hover:bg-surface-2 hover:text-fg"
     >
       <svg className="hidden dark:block" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
         <circle cx="12" cy="12" r="4" />

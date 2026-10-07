@@ -1,11 +1,11 @@
-import { getLibrary } from "@/lib/data";
+import { getLibrary, getSparklines } from "@/lib/data";
 import { StockCard } from "@/components/stock-card";
-import { EmptyState } from "@/components/empty-state";
 import { AddStockForm, FolderMenu, NewFolderForm } from "@/components/library-forms";
-import type { Stock } from "@/lib/types";
+import { Container, SectionTitle } from "@/components/container";
+import type { Folder, Stock } from "@/lib/types";
 
 export default async function HomePage() {
-  const { folders, stocks } = await getLibrary();
+  const [{ folders, stocks }, sparks] = await Promise.all([getLibrary(), getSparklines()]);
 
   const byFolder = new Map<string | null, Stock[]>();
   for (const s of stocks) {
@@ -13,76 +13,75 @@ export default async function HomePage() {
     byFolder.set(key, [...(byFolder.get(key) ?? []), s]);
   }
   const unfiled = byFolder.get(null) ?? [];
+  const sections: { folder: Folder | null; list: Stock[] }[] = [
+    ...folders.map((f) => ({ folder: f, list: byFolder.get(f.id) ?? [] })),
+    ...(unfiled.length > 0 ? [{ folder: null, list: unfiled }] : []),
+  ];
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Aksjer</h1>
-          <p className="text-sm text-muted">
-            {stocks.length === 0
-              ? "Legg til selskapene du vil følge med på."
-              : `${stocks.length} ${stocks.length === 1 ? "aksje" : "aksjer"} i ${folders.length} ${
-                  folders.length === 1 ? "mappe" : "mapper"
-                }`}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <NewFolderForm />
+    <>
+      <section className="px-[22px] pb-16 pt-16 text-center sm:pb-20 sm:pt-24">
+        <h1 className="text-[44px] font-bold leading-[1.06] tracking-[-0.025em] sm:text-[64px]">Aksjene dine.</h1>
+        <p className="mx-auto mt-3.5 max-w-[640px] text-xl leading-snug text-muted sm:text-2xl">
+          Hva kunder, ansatte og markedet faktisk mener – samlet på ett sted.
+        </p>
+        <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
           <AddStockForm folders={folders} />
+          <NewFolderForm />
         </div>
-      </div>
+        {stocks.length > 0 && (
+          <p className="mt-6 text-sm text-muted">
+            {stocks.length} {stocks.length === 1 ? "aksje" : "aksjer"} i {folders.length}{" "}
+            {folders.length === 1 ? "mappe" : "mapper"}
+          </p>
+        )}
+      </section>
 
-      {stocks.length === 0 && folders.length === 0 && (
-        <EmptyState title="Ingen aksjer ennå">
-          Start med å lage en mappe, for eksempel «Følger med» eller «Eier», og legg så til en aksje som
-          Munters (MTRS).
-        </EmptyState>
+      {sections.length === 0 && (
+        <section className="bg-surface-2 px-[22px] py-20 text-center">
+          <SectionTitle>Kom i gang.</SectionTitle>
+          <p className="mx-auto mt-3 max-w-[560px] text-lg leading-relaxed text-muted">
+            Lag en mappe, for eksempel «Følger med» eller «Eier», og legg til en aksje som Munters (MTRS).
+          </p>
+        </section>
       )}
 
-      {folders.map((folder) => {
-        const list = byFolder.get(folder.id) ?? [];
+      {sections.map(({ folder, list }, i) => {
+        const gray = i % 2 === 0;
         return (
-          <section key={folder.id} aria-labelledby={`folder-${folder.id}`}>
-            <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
-              <h2 id={`folder-${folder.id}`} className="text-sm font-semibold uppercase tracking-wide text-muted">
-                {folder.name}
-              </h2>
-              <span className="text-xs text-muted">{list.length}</span>
-              <div className="ml-auto">
-                <FolderMenu folder={folder} stockCount={list.length} />
+          <section
+            key={folder?.id ?? "uten-mappe"}
+            aria-label={folder?.name ?? "Uten mappe"}
+            className={`py-16 sm:py-20 ${gray ? "bg-surface-2" : "bg-bg"}`}
+          >
+            <Container>
+              <div className="mb-6 flex flex-wrap items-baseline justify-between gap-4">
+                <div className="flex items-baseline gap-3">
+                  <SectionTitle>{folder ? `${folder.name}.` : "Uten mappe."}</SectionTitle>
+                  <span className="text-lg text-muted">{list.length}</span>
+                </div>
+                {folder && <FolderMenu folder={folder} stockCount={list.length} />}
               </div>
-            </div>
-            {list.length === 0 ? (
-              <p className="text-sm text-muted">Ingen aksjer i denne mappen.</p>
-            ) : (
-              <StockGrid stocks={list} />
-            )}
+              {list.length === 0 ? (
+                <p className="text-lg text-muted">Ingen aksjer i denne mappen ennå.</p>
+              ) : (
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  {list.map((s) => (
+                    <StockCard key={s.id} stock={s} spark={sparks.get(s.id)} tone={gray ? "white" : "gray"} />
+                  ))}
+                </div>
+              )}
+            </Container>
           </section>
         );
       })}
 
-      {unfiled.length > 0 && (
-        <section aria-labelledby="folder-none">
-          <div className="mb-3 flex items-center gap-2 border-b border-border pb-2">
-            <h2 id="folder-none" className="text-sm font-semibold uppercase tracking-wide text-muted">
-              Uten mappe
-            </h2>
-            <span className="text-xs text-muted">{unfiled.length}</span>
-          </div>
-          <StockGrid stocks={unfiled} />
-        </section>
-      )}
-    </div>
-  );
-}
-
-function StockGrid({ stocks }: { stocks: Stock[] }) {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {stocks.map((s) => (
-        <StockCard key={s.id} stock={s} />
-      ))}
-    </div>
+      <footer className="bg-surface-2 py-7 text-xs text-muted">
+        <Container className="flex flex-wrap justify-between gap-4">
+          <span>Funn hentes fra offentlige kilder. Ikke investeringsråd.</span>
+          <span>Automatisk oppdatering hver mandag ca. kl. 06.00</span>
+        </Container>
+      </footer>
+    </>
   );
 }

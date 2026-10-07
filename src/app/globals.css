@@ -2,46 +2,58 @@
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* Lyst tema (standard) */
+/* Lyst tema (standard). Rolig og luftig, inspirert av apple.no. */
 :root {
-  --bg: #f6f7f9;
+  --bg: #ffffff;
   --surface: #ffffff;
-  --surface-2: #f0f2f5;
-  --border: #dde1e7;
-  --fg: #16202c;
-  --muted: #5d6b7c;
-  --accent: #2f5d8a;
+  --surface-2: #f5f5f7;
+  --border: #d2d2d7;
+  --fg: #1d1d1f;
+  --muted: #6e6e73;
+  --accent: #0066cc; /* lenker og tekst */
   --accent-fg: #ffffff;
-  --pos: #1f7a4d;
-  --pos-bg: #e3f3ea;
-  --neg: #b03a2e;
-  --neg-bg: #fbe7e4;
-  --neu: #6b7685;
-  --neu-bg: #eceff3;
-  --warn: #9a6a00;
-  --warn-bg: #fdf3d8;
+  --btn: #0071e3; /* knapper med hvit tekst */
+  --nav: rgba(250, 250, 252, 0.82);
+  --pos: #248a3d;
+  --pos-bg: #e8f5ec;
+  --neg: #d70015;
+  --neg-bg: #fdecec;
+  --neu: #6e6e73;
+  --neu-bg: #f0f0f2;
+  --warn: #b25000;
+  --warn-bg: #fff4e5;
+  --inverse: #000000; /* mørke seksjoner, f.eks. røde flagg */
+  --inverse-surface: #1d1d1f;
+  --inverse-fg: #f5f5f7;
+  --inverse-muted: #a1a1a6;
   --series-1: #2a78d6; /* datalinje, validert mot lys flate */
   color-scheme: light;
 }
 
 /* Mørkt tema */
 :root[data-theme="dark"] {
-  --bg: #0e141b;
-  --surface: #151d27;
-  --surface-2: #1c2632;
-  --border: #2a3644;
-  --fg: #e3e8ef;
-  --muted: #93a1b2;
-  --accent: #6fa3d6;
-  --accent-fg: #0e141b;
-  --pos: #5cc48e;
-  --pos-bg: #15301f;
-  --neg: #ef7d70;
-  --neg-bg: #3a1c19;
-  --neu: #9aa6b4;
-  --neu-bg: #222c38;
-  --warn: #e3b44f;
-  --warn-bg: #332914;
+  --bg: #000000;
+  --surface: #1c1c1e;
+  --surface-2: #161617;
+  --border: #424245;
+  --fg: #f5f5f7;
+  --muted: #a1a1a6;
+  --accent: #2997ff;
+  --accent-fg: #ffffff;
+  --btn: #0071e3;
+  --nav: rgba(22, 22, 23, 0.8);
+  --pos: #30d158;
+  --pos-bg: #0f2a17;
+  --neg: #ff6961;
+  --neg-bg: #3a1513;
+  --neu: #a1a1a6;
+  --neu-bg: #2c2c2e;
+  --warn: #ff9f0a;
+  --warn-bg: #33240a;
+  --inverse: #1c1c1e;
+  --inverse-surface: #2c2c2e;
+  --inverse-fg: #f5f5f7;
+  --inverse-muted: #a1a1a6;
   --series-1: #3987e5; /* datalinje, validert mot mørk flate */
   color-scheme: dark;
 }
@@ -55,6 +67,12 @@
   --color-muted: var(--muted);
   --color-accent: var(--accent);
   --color-accent-fg: var(--accent-fg);
+  --color-btn: var(--btn);
+  --color-nav: var(--nav);
+  --color-inverse: var(--inverse);
+  --color-inverse-surface: var(--inverse-surface);
+  --color-inverse-fg: var(--inverse-fg);
+  --color-inverse-muted: var(--inverse-muted);
   --color-pos: var(--pos);
   --color-pos-bg: var(--pos-bg);
   --color-neg: var(--neg);
@@ -64,8 +82,8 @@
   --color-warn: var(--warn);
   --color-warn-bg: var(--warn-bg);
   --color-series-1: var(--series-1);
-  --font-sans: Aptos, "Aptos Display", "Segoe UI", system-ui, -apple-system,
-    BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Aptos,
+    "Aptos Display", "Segoe UI", system-ui, "Helvetica Neue", sans-serif;
   --font-mono: "Aptos Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -77,29 +95,36 @@ body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font-sans);
-  font-feature-settings: "tnum" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Felles komponentklasser */
 @utility input {
-  @apply w-full rounded-md border border-border bg-surface px-3 py-2 text-base text-fg sm:text-sm
-    placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30;
+  @apply w-full rounded-xl border border-border bg-surface px-4 py-3 text-base text-fg
+    placeholder:text-muted focus:border-accent focus:outline-none focus:ring-4 focus:ring-accent/20;
 }
 @utility btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-md px-3.5 py-2 text-sm font-medium
-    transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-[15px]
+    font-normal transition-colors disabled:cursor-not-allowed disabled:opacity-40;
 }
 @utility btn-primary {
-  @apply btn bg-accent text-accent-fg hover:opacity-90;
+  @apply btn bg-btn text-white hover:brightness-110;
 }
 @utility btn-secondary {
-  @apply btn border border-border bg-surface text-fg hover:bg-surface-2;
+  @apply btn bg-surface-2 text-fg hover:bg-neu-bg;
 }
 @utility btn-danger {
-  @apply btn border border-neg/40 bg-surface text-neg hover:bg-neg-bg;
+  @apply btn bg-neg-bg text-neg hover:brightness-95;
 }
 @utility card {
-  @apply rounded-lg border border-border bg-surface;
+  @apply rounded-[22px] bg-surface-2;
+}
+@utility link {
+  @apply text-accent hover:underline;
+}
+@utility tnum {
+  font-feature-settings: "tnum" 1;
 }
 
 /* Tydelig fokusmarkering for tastatur */
