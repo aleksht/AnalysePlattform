@@ -124,3 +124,12 @@ export async function deleteStock(formData: FormData) {
   revalidatePath("/");
   redirect("/");
 }
+
+export async function setWeeklyAuto(formData: FormData) {
+  const id = z.guid().parse(formData.get("id"));
+  const enabled = formData.get("enabled") === "true";
+  const { supabase } = await requireUser();
+  await supabase.from("stocks").update({ weekly_auto: enabled }).eq("id", id);
+  revalidatePath("/innstillinger");
+  revalidatePath(`/aksjer/${id}`);
+}

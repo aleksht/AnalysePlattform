@@ -30,6 +30,7 @@ export type Stock = {
   sentiment_score: number | null;
   sentiment_label: SentimentLabel | null;
   last_run_at: string | null;
+  sentiment_trend: "bedre" | "verre" | "uendret" | "ny" | null;
   weekly_auto: boolean;
   created_at: string;
 };
@@ -89,7 +90,13 @@ export type RunSection = {
   }[];
 };
 
+export type { Trend, TrendEntry, Direction } from "@/lib/research/trend";
+export type { Report } from "@/lib/research/synthesis";
+
 export type CompletedRun = ResearchRun & {
+  trend: import("@/lib/research/trend").Trend | null;
+  report: import("@/lib/research/synthesis").Report | null;
+  theme_scores: import("@/lib/research/trend").ThemeScores | null;
   sections: Partial<Record<Category, RunSection>> | null;
   findings_count: number;
   red_flags: number;

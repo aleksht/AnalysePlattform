@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Stock } from "@/lib/types";
 import { formatDate } from "@/lib/format";
 import { SentimentBadge } from "./sentiment-badge";
+import { TrendBadge } from "./trend-badge";
 
 export function StockCard({ stock }: { stock: Stock }) {
   return (
@@ -19,9 +20,10 @@ export function StockCard({ stock }: { stock: Stock }) {
         </div>
         <SentimentBadge label={stock.sentiment_label} score={stock.sentiment_score} />
       </div>
-      <p className="text-xs text-muted">
-        {stock.last_run_at ? `Oppdatert ${formatDate(stock.last_run_at)}` : "Ingen research ennå"}
-      </p>
+      <div className="flex items-center justify-between gap-2 text-xs text-muted">
+        <span>{stock.last_run_at ? `Oppdatert ${formatDate(stock.last_run_at)}` : "Ingen research ennå"}</span>
+        <TrendBadge direction={stock.sentiment_trend} />
+      </div>
     </Link>
   );
 }

@@ -22,6 +22,7 @@ const STEP_LABELS: Record<string, string> = {
   ledelse: "Ledelse",
   nyheter: "Nyheter",
   konkurrenter: "Konkurrenter",
+  syntese: "Oppsummering",
 };
 
 export function RunControl({ stockId, activeRunId }: { stockId: string; activeRunId: string | null }) {
@@ -84,7 +85,7 @@ export function RunControl({ stockId, activeRunId }: { stockId: string; activeRu
   if (runId) {
     const steps = [...(status?.run_steps ?? [])].sort((a, b) => a.ord - b.ord);
     const done = steps.filter((s) => s.status === "done" || s.status === "failed").length;
-    const total = status?.steps_total || steps.length || 6;
+    const total = status?.steps_total || steps.length || 7;
     const pct = Math.round((done / total) * 100);
     return (
       <div className="card w-full p-4 sm:w-96" role="status" aria-live="polite">

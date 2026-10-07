@@ -16,6 +16,7 @@ import {
 } from "./schema";
 import type { SeenSource } from "./sources";
 import type { Usage } from "./usage";
+import { runSynthesis, type SynthesisResult } from "./synthesis";
 
 /** Det som lagres i run_steps.state mellom funksjonskall. */
 export type StepState = {
@@ -53,7 +54,7 @@ export type OverviewResult = {
 export type StepOutcome =
   | { kind: "yield"; state: StepState; usage: Usage }
   | { kind: "checkpoint"; state: StepState; usage: Usage }
-  | { kind: "done"; result: CategoryResult | OverviewResult; usage: Usage };
+  | { kind: "done"; result: CategoryResult | OverviewResult | SynthesisResult; usage: Usage };
 
 type Ctx = {
   db: SupabaseClient;
@@ -70,9 +71,15 @@ type Ctx = {
  * slik at notatene lagres før uttrekket. Da slipper vi å søke på nytt hvis uttrekket feiler.
  */
 export async function advanceStep(ctx: Ctx, state: StepState | null, usage: Usage): Promise<StepOutcome> {
+  if (ctx.step === "syntese") {
+    const { result, usage: u } = await runSynthesis(ctx.db, ctx, usage);
+    return { kind: "done", result, usage: u };
+  }
+  const researchStep = ctx.step;
+
   if (state?.notes === undefined) {
     const r = await runResearch({
-      step: ctx.step,
+      step: researchStep,
       stock: ctx.stock,
       state: state?.research ?? null,
       usage,

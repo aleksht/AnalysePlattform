@@ -50,16 +50,11 @@ export async function getActiveRun(stockId: string) {
 }
 
 /** Siste vellykkede kjøring med funn og kilder. */
-export async function getLatestResearch(stockId: string) {
+export async function getLatestResearch(stockId: string, runId?: string) {
   const { supabase } = await requireUser();
-  const { data: run } = await supabase
-    .from("research_runs")
-    .select("*")
-    .eq("stock_id", stockId)
-    .eq("status", "done")
-    .order("finished_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  let query = supabase.from("research_runs").select("*").eq("stock_id", stockId).eq("status", "done");
+  if (runId) query = query.eq("id", runId);
+  const { data: run } = await query.order("finished_at", { ascending: false }).limit(1).maybeSingle();
   if (!run) return null;
 
   const [findings, sources] = await Promise.all([
@@ -83,4 +78,42 @@ export async function getLastFailedRun(stockId: string) {
     .limit(1)
     .maybeSingle();
   return data && data.status === "failed" ? (data as { id: string; error: string | null; created_at: string }) : null;
+}
+
+export type RunHistoryItem = {
+  id: string;
+  trigger: "manual" | "weekly";
+  finished_at: string;
+  findings_count: number;
+  red_flags: number;
+  cost_usd: number;
+  score: number | null;
+  label: string | null;
+};
+
+/** Fullførte kjøringer for en aksje, eldste først (for trend over tid). */
+export async function getRunHistory(stockId: string, limit = 26): Promise<RunHistoryItem[]> {
+  const { supabase } = await requireUser();
+  const { data } = await supabase
+    .from("research_runs")
+    .select("id, trigger, finished_at, findings_count, red_flags, cost_usd, theme_scores")
+    .eq("stock_id", stockId)
+    .eq("status", "done")
+    .order("finished_at", { ascending: false })
+    .limit(limit);
+  return (data ?? [])
+    .map((r) => {
+      const overall = (r.theme_scores as { overall?: { score: number; label: string } | null } | null)?.overall;
+      return {
+        id: r.id as string,
+        trigger: r.trigger as "manual" | "weekly",
+        finished_at: r.finished_at as string,
+        findings_count: r.findings_count as number,
+        red_flags: r.red_flags as number,
+        cost_usd: Number(r.cost_usd),
+        score: overall?.score ?? null,
+        label: overall?.label ?? null,
+      };
+    })
+    .reverse();
 }

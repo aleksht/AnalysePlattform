@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth";
-import { getRuns } from "@/lib/data";
+import { getLibrary, getRuns } from "@/lib/data";
+import { setWeeklyAuto } from "@/lib/actions/library";
 import { formatDate, formatInt, formatUsd } from "@/lib/format";
 import { EmptyState } from "@/components/empty-state";
 
@@ -16,7 +17,8 @@ const STATUS: Record<string, string> = {
 
 export default async function SettingsPage() {
   const { user } = await requireUser();
-  const runs = await getRuns(100);
+  const [runs, { stocks }] = await Promise.all([getRuns(100), getLibrary()]);
+  const weeklyCount = stocks.filter((s) => s.weekly_auto).length;
   const total = runs.reduce((sum, r) => sum + Number(r.cost_usd), 0);
 
   return (
@@ -28,6 +30,39 @@ export default async function SettingsPage() {
         <p className="text-sm">
           Innlogget som <span className="font-medium">{user.email}</span>
         </p>
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Automatisk ukentlig oppdatering</h2>
+          <p className="mt-1 text-sm text-muted">
+            Hver mandag morgen (ca. kl. 06 norsk tid) kjøres ny research for aksjene som er slått på, hvis siste
+            kjøring er eldre enn seks dager. {weeklyCount} av {stocks.length} aksjer er med.
+          </p>
+        </div>
+        {stocks.length > 0 && (
+          <ul className="card divide-y divide-border">
+            {stocks.map((s) => (
+              <li key={s.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                <span>
+                  {s.name} <span className="font-mono text-xs text-muted">{s.ticker}</span>
+                </span>
+                <form action={setWeeklyAuto}>
+                  <input type="hidden" name="id" value={s.id} />
+                  <input type="hidden" name="enabled" value={String(!s.weekly_auto)} />
+                  <button
+                    className={`rounded-full px-3 py-1 text-xs font-medium ${
+                      s.weekly_auto ? "bg-pos-bg text-pos" : "bg-surface-2 text-muted"
+                    }`}
+                    aria-label={`${s.weekly_auto ? "Slå av" : "Slå på"} ukentlig oppdatering for ${s.name}`}
+                  >
+                    {s.weekly_auto ? "På" : "Av"}
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="space-y-3">

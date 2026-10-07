@@ -7,8 +7,11 @@ import { z } from "zod";
 export const CATEGORIES = ["kunder", "ansatte", "ledelse", "nyheter", "konkurrenter"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
-export const STEPS = ["oversikt", ...CATEGORIES] as const;
+// Må stemme med research_steps() i supabase/migrations/0004_insight.sql
+export const STEPS = ["oversikt", ...CATEGORIES, "syntese"] as const;
 export type Step = (typeof STEPS)[number];
+
+export type ResearchStep = Exclude<Step, "syntese">;
 
 export const STEP_LABELS: Record<Step, string> = {
   oversikt: "Selskapsoversikt",
@@ -17,6 +20,7 @@ export const STEP_LABELS: Record<Step, string> = {
   ledelse: "Ledelse og resultater",
   nyheter: "Nyheter og bransje",
   konkurrenter: "Konkurrenter",
+  syntese: "Oppsummering",
 };
 
 export const SENTIMENTS = ["positiv", "nøytral", "negativ"] as const;
@@ -191,6 +195,30 @@ export function overviewOutputSchema(sourceIds: NonEmpty) {
     coverage_note: z.string().nullable().describe("Hva det fantes lite informasjon om"),
   });
 }
+
+export function synthesisOutputSchema(findingIds: NonEmpty) {
+  const refs = z.array(z.enum(findingIds)).min(1).describe("Id-ene til funnene som støtter punktet");
+  return z.object({
+    headline: z.string().describe("Én setning som oppsummerer bildet, på norsk"),
+    takeaways: z
+      .array(z.object({ text: z.string(), sentiment: z.enum(SENTIMENTS), finding_refs: refs }))
+      .describe("3–6 hovedkonklusjoner, de viktigste først"),
+    changes: z
+      .array(
+        z.object({
+          text: z.string(),
+          direction: z.enum(["bedre", "verre", "uendret", "ny"]),
+          finding_refs: refs,
+        }),
+      )
+      .describe("Hva som har endret seg siden forrige kjøring"),
+    watch_points: z
+      .array(z.object({ text: z.string(), finding_refs: refs }))
+      .describe("2–4 ting investoren bør følge med på fremover"),
+    data_gaps: z.array(z.string()).describe("Temaer med lite offentlig informasjon"),
+  });
+}
+export type SynthesisOutput = z.infer<ReturnType<typeof synthesisOutputSchema>>;
 
 export type CategoryOutput = z.infer<ReturnType<typeof categoryOutputSchema>> & {
   key_points?: { point: string; period: string; source_ref: string }[];

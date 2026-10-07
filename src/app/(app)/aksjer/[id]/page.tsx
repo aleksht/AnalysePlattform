@@ -11,6 +11,7 @@ import { StockTabs } from "@/components/stock-tabs";
 import { StockSettings } from "@/components/stock-settings";
 import { EmptyState } from "@/components/empty-state";
 import { RunControl } from "@/components/run-control";
+import { TrendBadge } from "@/components/trend-badge";
 import { CategoryView, ManagementView, RedFlagsView, SourcesView } from "@/components/findings";
 import { formatUsd } from "@/lib/format";
 
@@ -56,15 +57,22 @@ export default async function StockPage({ params, searchParams }: PageProps<"/ak
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted">
               <SentimentBadge label={stock.sentiment_label} score={stock.sentiment_score} size="md" />
+              <TrendBadge direction={stock.sentiment_trend} />
               <span>
                 {stock.last_run_at ? `Sist oppdatert ${formatDate(stock.last_run_at)}` : "Ingen research ennå"}
               </span>
             </div>
           </div>
           <div className="flex w-full flex-wrap items-start gap-2 sm:w-auto">
-            <button className="btn-secondary" disabled title="Kommer i fase 3">
-              Rapportvisning
-            </button>
+            {research ? (
+              <Link href={`/aksjer/${stock.id}/rapport`} className="btn-secondary">
+                Rapportvisning
+              </Link>
+            ) : (
+              <button className="btn-secondary" disabled title="Kjør research først">
+                Rapportvisning
+              </button>
+            )}
             <RunControl key={activeRunId ?? "idle"} stockId={stock.id} activeRunId={activeRunId} />
           </div>
         </div>
@@ -141,18 +149,23 @@ function TabContent({ tab, stock, research }: { tab: TabSlug; stock: Stock; rese
   const by = (c: Finding["category"]) => findings.filter((f) => f.category === c);
   switch (tab) {
     case "kunder":
-      return <CategoryView section={run.sections?.kunder} findings={by("kunder")} />;
+      return <CategoryView section={run.sections?.kunder} findings={by("kunder")} category="kunder" trend={run.trend} />;
     case "ansatte":
-      return <CategoryView section={run.sections?.ansatte} findings={by("ansatte")} />;
+      return <CategoryView section={run.sections?.ansatte} findings={by("ansatte")} category="ansatte" trend={run.trend} />;
     case "ledelse":
-      return <ManagementView section={run.sections?.ledelse} findings={by("ledelse")} />;
+      return <ManagementView section={run.sections?.ledelse} findings={by("ledelse")} trend={run.trend} />;
     case "nyheter":
       return (
         <div className="space-y-10">
-          <CategoryView section={run.sections?.nyheter} findings={by("nyheter")} />
+          <CategoryView section={run.sections?.nyheter} findings={by("nyheter")} category="nyheter" trend={run.trend} />
           <div>
             <h2 className="mb-3 text-lg font-semibold">Konkurrenter</h2>
-            <CategoryView section={run.sections?.konkurrenter} findings={by("konkurrenter")} />
+            <CategoryView
+              section={run.sections?.konkurrenter}
+              findings={by("konkurrenter")}
+              category="konkurrenter"
+              trend={run.trend}
+            />
           </div>
         </div>
       );

@@ -1,4 +1,4 @@
-import type { Step } from "./schema";
+import type { ResearchStep } from "./schema";
 
 export type StockContext = { name: string; ticker: string; exchange: string | null };
 
@@ -21,7 +21,7 @@ Svar til slutt med strukturerte researchnotater på norsk:
 1. Ett avsnitt per tema med punkter. Hvert punkt: påstand – stemning (positiv/nøytral/negativ) – kort sitat eller parafrase – URL – dato hvis kjent – kildetype.
 2. En kort liste over hva du søkte etter og hvor du fant lite eller ingenting.`;
 
-const STEP_BRIEFS: Record<Step, string> = {
+const STEP_BRIEFS: Record<ResearchStep, string> = {
   oversikt: `Lag en kort selskapsoversikt:
 - Hva selskapet gjør, hovedmarkeder og omtrentlig størrelse.
 - Forretningssegmenter, gjerne med andel av omsetningen.
@@ -74,7 +74,7 @@ Prioriter bransjepresse og uavhengige nyhetskilder fremfor selskapets egne press
 - Hvordan konkurrenter og bransjeanalytikere beskriver selskapets posisjon`,
 };
 
-export function researchUserPrompt(step: Step, stock: StockContext, today: string): string {
+export function researchUserPrompt(step: ResearchStep, stock: StockContext, today: string): string {
   const exchange = stock.exchange ? `, notert på ${stock.exchange}` : "";
   return `Selskap: ${stock.name} (ticker ${stock.ticker}${exchange})
 Dagens dato: ${today}
@@ -103,4 +103,40 @@ ${notes}
 <kilder>
 ${sourceList}
 </kilder>`;
+}
+
+export const SYNTHESIS_SYSTEM = `Du skriver en kort investorrapport på norsk bokmål basert på ferdige researchfunn.
+
+Regler:
+- Bruk bare funnene i listen. Ikke legg til egen kunnskap, tall eller påstander.
+- Hver konklusjon, endring og oppfølgingspunkt skal vise til ett eller flere funn med id-ene deres (F1, F2 …).
+- Vær balansert: ta med både styrker og svakheter, og vekt sterk evidens høyere enn svak.
+- Skriv konkret og nøkternt, uten superlativer. Leseren er en erfaren privat investor.
+- "changes" skal bare beskrive endringer mot forrige kjøring som støttes av funnene og trendtabellen. Finnes ingen forrige kjøring, la listen være tom.
+- "data_gaps" beskriver hva det fantes lite offentlig informasjon om.`;
+
+export function synthesisUserPrompt(input: {
+  stock: StockContext;
+  findings: string;
+  sections: string;
+  trend: string;
+  previous: string;
+}): string {
+  return `Selskap: ${input.stock.name} (${input.stock.ticker})
+
+<oppsummeringer_per_kategori>
+${input.sections}
+</oppsummeringer_per_kategori>
+
+<funn>
+${input.findings}
+</funn>
+
+<trend_mot_forrige_kjoring>
+${input.trend}
+</trend_mot_forrige_kjoring>
+
+<forrige_rapport>
+${input.previous}
+</forrige_rapport>`;
 }

@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { z } from "zod";
 import { MAX_CONTINUATIONS, MIN_MS_FOR_REQUEST, RESEARCH_MODEL, TOOL_LIMITS } from "./config";
 import { EXTRACT_SYSTEM, RESEARCH_SYSTEM, extractUserPrompt, researchUserPrompt, type StockContext } from "./prompts";
-import type { Step } from "./schema";
+import type { ResearchStep } from "./schema";
 import { collectSources, formatSourceList, type SeenSource } from "./sources";
 import { addApiUsage, type Usage } from "./usage";
 import { toStrictJsonSchema } from "./json-schema";
@@ -35,7 +35,7 @@ export type ResearchProgress =
  * Fortsetter ved pause_turn, og gir fra seg kontrollen hvis tiden er i ferd med å renne ut.
  */
 export async function runResearch(opts: {
-  step: Step;
+  step: ResearchStep;
   stock: StockContext;
   state: ResearchState | null;
   usage: Usage;
@@ -103,12 +103,19 @@ export async function runResearch(opts: {
  */
 export async function extractStructured<S extends z.ZodType>(opts: {
   schema: S;
-  stepLabel: string;
-  stock: StockContext;
-  notes: string;
-  sources: SeenSource[];
   usage: Usage;
+  /** Standard: uttrekk fra researchnotater */
+  system?: string;
+  prompt?: string;
+  effort?: "low" | "medium";
+  stepLabel?: string;
+  stock?: StockContext;
+  notes?: string;
+  sources?: SeenSource[];
 }): Promise<{ data: z.infer<S>; usage: Usage }> {
+  const prompt =
+    opts.prompt ??
+    extractUserPrompt(opts.stepLabel ?? "", opts.stock!, opts.notes ?? "", formatSourceList(opts.sources ?? []));
   let usage = opts.usage;
   let lastError = "";
   const jsonSchema = toStrictJsonSchema(opts.schema);
@@ -119,14 +126,9 @@ export async function extractStructured<S extends z.ZodType>(opts: {
       max_tokens: 16000,
       betas: BETAS,
       fallbacks: "default",
-      system: EXTRACT_SYSTEM,
-      output_config: { effort: "low", format: { type: "json_schema", schema: jsonSchema } },
-      messages: [
-        {
-          role: "user",
-          content: extractUserPrompt(opts.stepLabel, opts.stock, opts.notes, formatSourceList(opts.sources)),
-        },
-      ],
+      system: opts.system ?? EXTRACT_SYSTEM,
+      output_config: { effort: opts.effort ?? "low", format: { type: "json_schema", schema: jsonSchema } },
+      messages: [{ role: "user", content: prompt }],
     });
     usage = addApiUsage(usage, response.usage, response.model);
 

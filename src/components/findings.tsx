@@ -1,4 +1,5 @@
-import type { Category, Finding, RunSection, Source } from "@/lib/types";
+import type { Category, Finding, RunSection, Source, Trend } from "@/lib/types";
+import { TrendBadge } from "./trend-badge";
 import { SOURCE_TYPE_LABELS, THEME_LABELS } from "@/lib/research/schema";
 import { hostOf } from "@/lib/research/sources";
 import { formatDate } from "@/lib/format";
@@ -90,10 +91,15 @@ function SentimentCounts({ findings }: { findings: Finding[] }) {
 export function CategoryView({
   section,
   findings,
+  category,
+  trend,
 }: {
   section: RunSection | undefined;
   findings: Finding[];
+  category?: Category;
+  trend?: Trend | null;
 }) {
+  const trendFor = (theme: string) => trend?.entries.find((e) => e.key === `${category}.${theme}`);
   if (!section) {
     return (
       <EmptyState title="Ingen data for denne kategorien">
@@ -116,6 +122,7 @@ export function CategoryView({
             <header className="flex flex-wrap items-center gap-2">
               <h3 className="font-semibold">{themeLabel(t.theme)}</h3>
               <span className={`rounded-full px-2 py-0.5 text-xs ${cov.cls}`}>{cov.label}</span>
+              <TrendBadge direction={trendFor(t.theme)?.direction} uncertain={trendFor(t.theme)?.uncertain} />
               {list.length > 0 && (
                 <span className="ml-auto">
                   <SentimentCounts findings={list} />
@@ -159,7 +166,15 @@ const PROMISE_STATUS: Record<NonNullable<RunSection["promises"]>[number]["status
   for_tidlig: { label: "For tidlig", cls: "bg-neu-bg text-muted" },
 };
 
-export function ManagementView({ section, findings }: { section: RunSection | undefined; findings: Finding[] }) {
+export function ManagementView({
+  section,
+  findings,
+  trend,
+}: {
+  section: RunSection | undefined;
+  findings: Finding[];
+  trend?: Trend | null;
+}) {
   return (
     <div className="space-y-6">
       {section?.key_points && section.key_points.length > 0 && (
@@ -199,7 +214,7 @@ export function ManagementView({ section, findings }: { section: RunSection | un
           </ul>
         </section>
       )}
-      <CategoryView section={section} findings={findings} />
+      <CategoryView section={section} findings={findings} category="ledelse" trend={trend} />
     </div>
   );
 }

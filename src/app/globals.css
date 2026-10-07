@@ -20,6 +20,7 @@
   --neu-bg: #eceff3;
   --warn: #9a6a00;
   --warn-bg: #fdf3d8;
+  --series-1: #2a78d6; /* datalinje, validert mot lys flate */
   color-scheme: light;
 }
 
@@ -41,6 +42,7 @@
   --neu-bg: #222c38;
   --warn: #e3b44f;
   --warn-bg: #332914;
+  --series-1: #3987e5; /* datalinje, validert mot mørk flate */
   color-scheme: dark;
 }
 
@@ -61,6 +63,7 @@
   --color-neu-bg: var(--neu-bg);
   --color-warn: var(--warn);
   --color-warn-bg: var(--warn-bg);
+  --color-series-1: var(--series-1);
   --font-sans: Aptos, "Aptos Display", "Segoe UI", system-ui, -apple-system,
     BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
   --font-mono: "Aptos Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

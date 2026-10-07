@@ -6,6 +6,8 @@ import { MIN_MS_FOR_REQUEST } from "./config";
 import { CATEGORIES, STEP_LABELS, type Step } from "./schema";
 import { computeSentiment } from "./scoring";
 import { advanceStep, type CategoryResult, type OverviewResult, type StepState } from "./steps";
+import type { SynthesisResult } from "./synthesis";
+import { computeThemeScores } from "./trend";
 import { emptyUsage, estimateCost, sumUsage, type Usage } from "./usage";
 
 const MAX_ATTEMPTS = 3;
@@ -146,16 +148,11 @@ export async function finalizeRunIfComplete(db: SupabaseClient, runId: string) {
   const failed = list.filter((s) => s.status === "failed");
   const sentiment = computeSentiment(all);
 
-  // Stemning per kategori og tema, brukes til trend mellom kjøringer
-  const groups = new Map<string, typeof all>();
-  for (const f of all) {
-    for (const key of [f.category, `${f.category}.${f.theme}`]) groups.set(key, [...(groups.get(key) ?? []), f]);
-  }
-  const themeScores: Record<string, { score: number; label: string; count: number }> = {};
-  for (const [key, group] of groups) {
-    const s = computeSentiment(group);
-    if (s) themeScores[key] = { ...s, count: group.length };
-  }
+  // Syntesen har allerede beregnet stemning per tema og trend. Feilet den, beregnes stemningen her.
+  const synthesis = list.find((s) => s.step === "syntese" && s.status === "done")?.result as
+    | SynthesisResult
+    | undefined;
+  const themeScores = synthesis?.theme_scores ?? computeThemeScores(all);
 
   const sections: Record<string, CategoryResult> = {};
   for (const s of okCategories) sections[s.step] = s.result as CategoryResult;
@@ -169,7 +166,10 @@ export async function finalizeRunIfComplete(db: SupabaseClient, runId: string) {
       sections,
       findings_count: all.length,
       red_flags: all.filter((f) => f.is_red_flag).length,
-      theme_scores: { overall: sentiment, ...themeScores },
+      theme_scores: themeScores,
+      trend: synthesis?.trend ?? null,
+      report: synthesis?.report ?? null,
+      summary_md: synthesis?.report?.headline ?? null,
       model: usage.models.join(", ") || null,
       input_tokens: usage.input_tokens,
       output_tokens: usage.output_tokens,
@@ -200,6 +200,7 @@ export async function finalizeRunIfComplete(db: SupabaseClient, runId: string) {
       last_run_at: new Date().toISOString(),
       sentiment_score: sentiment?.score ?? null,
       sentiment_label: sentiment?.label ?? null,
+      sentiment_trend: synthesis?.trend.entries.find((e) => e.key === "overall")?.direction ?? null,
       ...(overview ? { overview } : {}),
     })
     .eq("id", updated.stock_id);

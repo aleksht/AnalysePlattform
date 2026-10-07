@@ -10,7 +10,7 @@ Webapp for aksjeresearch: hva kunder, ansatte og markedet faktisk mener om selsk
 |---|---|---|
 | 1 | Innlogging, mapper, aksjer, aksjeside med tomme faner | ✅ |
 | 2 | Researchagent, lagring og visning av funn med kilder | ✅ |
-| 3 | Innsiktsmodus, trend over tid, ukentlig kjøring | – |
+| 3 | Innsiktsmodus, trend over tid, ukentlig kjøring | ✅ |
 | 4 | Finpuss, feilhåndtering, kostnadsoversikt | – |
 
 ## Oppsett
@@ -53,7 +53,7 @@ npm run dev
 
 ## Slik fungerer researchagenten
 
-En kjøring består av seks steg: oversikt, kunder, ansatte, ledelse, nyheter og konkurrenter. Hvert steg har to faser:
+En kjøring består av seks researchsteg (oversikt, kunder, ansatte, ledelse, nyheter og konkurrenter) og til slutt et syntesesteg. Hvert researchsteg har to faser:
 
 1. **Research.** Claude (`claude-sonnet-5-5`) søker og leser med web search og web fetch (`web_search_20260318` og `web_fetch_20260318`). Hvert steg har et eget tak på antall søk, og svar som stopper med `pause_turn`, blir videreført.
 2. **Uttrekk.** Notatene gjøres om til strengt strukturert JSON med structured outputs. Skjemaet bygges fra zod i `src/lib/research/schema.ts`. Kildene får id-er (S1, S2 …) fra listen over URL-er agenten faktisk så, og modellen kan bare velge blant disse. Hvert funn valideres med zod før det lagres.
@@ -62,6 +62,15 @@ En kjøring består av seks steg: oversikt, kunder, ansatte, ledelse, nyheter og
 - Stegene ligger i tabellen `run_steps`. `/api/jobs/run-step` svarer 202 med en gang og kjører stegene i `after()`, innenfor `maxDuration = 300`.
 - Hvis tiden er i ferd med å renne ut, lagres samtalen, og steget fortsetter i neste runde. Feil prøves inntil tre ganger, med økende ventetid.
 - pg_cron sjekker hvert minutt om noe venter eller henger.
+
+**Syntese og trend:** Når alle kategoriene er ferdige, kjøres et syntesesteg:
+- Stemning beregnes per kategori og tema, vektet etter evidensstyrke.
+- Resultatet sammenlignes med forrige kjøring. En endring på minst 0,25 på skalaen fra -1 til 1 regnes som bedre eller verre, og sammenligninger med få funn merkes som usikre.
+- Claude skriver hovedkonklusjoner, endringer og punkter å følge med på. Hvert punkt må vise til konkrete funn (F1, F2 …), og punkter uten gyldig funn tas ikke med.
+
+Resultatet vises i rapportvisningen (`/aksjer/[id]/rapport`).
+
+**Ukentlig kjøring:** pg_cron legger aksjer med ukentlig oppdatering i køen hver mandag kl. 04:00 UTC (`enqueue_weekly_runs`). Ukentlig oppdatering slås av og på per aksje under Innstillinger.
 
 **Kostnad:** Tokenforbruk og antall søk lagres per steg og per kjøring. Kostnaden estimeres ut fra prisene i `src/lib/research/config.ts` og vises på innstillingssiden.
 
