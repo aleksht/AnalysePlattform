@@ -40,8 +40,8 @@ export function NewFolderForm() {
   const ref = useResetOnSuccess(state);
   return (
     <details className="relative">
-      <summary className="btn-secondary cursor-pointer list-none">+ Ny mappe</summary>
-      <div className="card absolute right-0 z-10 mt-2 w-72 p-4 shadow-lg">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center text-[17px] text-accent hover:underline">Ny mappe ›</summary>
+      <div className="absolute rounded-2xl bg-surface shadow-xl ring-1 ring-black/5 dark:ring-white/10 left-1/2 z-20 mt-2 w-72 -translate-x-1/2 p-5 text-left shadow-lg">
         <form ref={ref} action={action} className="space-y-3">
           <label className="block text-sm font-medium" htmlFor="folder-name">
             Navn på mappe
@@ -62,8 +62,8 @@ export function AddStockForm({ folders }: { folders: Folder[] }) {
   const ref = useResetOnSuccess(state);
   return (
     <details className="relative">
-      <summary className="btn-primary cursor-pointer list-none">+ Legg til aksje</summary>
-      <div className="card absolute right-0 z-10 mt-2 w-[min(22rem,calc(100vw-2rem))] p-4 shadow-lg">
+      <summary className="btn-primary cursor-pointer list-none text-[17px]">Legg til aksje</summary>
+      <div className="absolute rounded-2xl bg-surface shadow-xl ring-1 ring-black/5 dark:ring-white/10 left-1/2 z-20 mt-2 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 p-5 text-left shadow-lg">
         <form ref={ref} action={action} className="space-y-3">
           <div>
             <label className="mb-1 block text-sm font-medium" htmlFor="stock-name">
@@ -132,12 +132,12 @@ export function FolderMenu({ folder, stockCount }: { folder: Folder; stockCount:
   return (
     <details className="relative">
       <summary
-        className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-md text-muted hover:bg-surface-2 hover:text-fg"
+        className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-full text-xl text-muted hover:bg-neu-bg hover:text-fg"
         aria-label={`Valg for ${folder.name}`}
       >
         ⋯
       </summary>
-      <div className="card absolute right-0 z-10 mt-1 w-64 space-y-3 p-4 shadow-lg">
+      <div className="absolute rounded-2xl bg-surface shadow-xl ring-1 ring-black/5 dark:ring-white/10 right-0 z-10 mt-1 w-64 space-y-3 p-4 shadow-lg">
         <form ref={ref} action={action} className="space-y-2">
           <input type="hidden" name="id" value={folder.id} />
           <label className="block text-sm font-medium" htmlFor={`rename-${folder.id}`}>

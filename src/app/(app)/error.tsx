@@ -7,7 +7,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
     console.error(error);
   }, [error]);
   return (
-    <div className="py-16 text-center">
+    <div className="px-[22px] py-24 text-center">
       <h1 className="text-xl font-semibold">Noe gikk galt</h1>
       <p className="mt-1 text-sm text-muted">
         Kunne ikke hente data akkurat nå. Sjekk nettforbindelsen og prøv igjen.

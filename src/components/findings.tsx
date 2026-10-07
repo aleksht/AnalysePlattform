@@ -113,14 +113,14 @@ export function CategoryView({
 
   return (
     <div className="space-y-4">
-      <p className="leading-relaxed">{section.summary}</p>
+      <p className="mx-auto max-w-[760px] pb-4 text-center text-xl leading-snug text-muted sm:text-[21px]">{section.summary}</p>
       {themes.map((t) => {
         const list = findings.filter((f) => f.theme === t.theme);
         const cov = COVERAGE[t.coverage];
         return (
-          <section key={t.theme} className="card p-4 sm:p-5">
+          <section key={t.theme} className="rounded-[22px] bg-surface p-6 sm:p-7">
             <header className="flex flex-wrap items-center gap-2">
-              <h3 className="font-semibold">{themeLabel(t.theme)}</h3>
+              <h3 className="text-2xl font-bold tracking-[-0.01em]">{themeLabel(t.theme)}</h3>
               <span className={`rounded-full px-2 py-0.5 text-xs ${cov.cls}`}>{cov.label}</span>
               <TrendBadge direction={trendFor(t.theme)?.direction} uncertain={trendFor(t.theme)?.uncertain} />
               {list.length > 0 && (
@@ -144,8 +144,8 @@ export function CategoryView({
         );
       })}
       {extraThemes.map((theme) => (
-        <section key={theme} className="card p-4 sm:p-5">
-          <h3 className="font-semibold">{themeLabel(theme)}</h3>
+        <section key={theme} className="rounded-[22px] bg-surface p-6 sm:p-7">
+          <h3 className="text-2xl font-bold tracking-[-0.01em]">{themeLabel(theme)}</h3>
           <ul className="mt-2 divide-y divide-border">
             {findings
               .filter((f) => f.theme === theme)
@@ -178,8 +178,8 @@ export function ManagementView({
   return (
     <div className="space-y-6">
       {section?.key_points && section.key_points.length > 0 && (
-        <section className="card p-4 sm:p-5">
-          <h3 className="mb-2 font-semibold">Hovedpunkter fra siste rapporter</h3>
+        <section className="rounded-[22px] bg-surface p-6 sm:p-7">
+          <h3 className="mb-4 text-2xl font-bold tracking-[-0.01em]">Hovedpunkter fra siste rapporter</h3>
           <ul className="space-y-2 text-sm">
             {section.key_points.map((k, i) => (
               <li key={i} className="flex gap-3">
@@ -193,8 +193,8 @@ export function ManagementView({
         </section>
       )}
       {section?.promises && section.promises.length > 0 && (
-        <section className="card overflow-hidden">
-          <h3 className="px-4 pt-4 font-semibold sm:px-5">Lovet mot levert</h3>
+        <section className="overflow-hidden rounded-[22px] bg-surface">
+          <h3 className="px-6 pt-6 text-2xl font-bold tracking-[-0.01em] sm:px-7">Lovet mot levert</h3>
           <ul className="divide-y divide-border">
             {section.promises.map((p, i) => {
               const st = PROMISE_STATUS[p.status];
@@ -234,20 +234,35 @@ export function RedFlagsView({ findings }: { findings: Finding[] }) {
     konkurrenter: "Konkurrenter",
   };
   return (
-    <div className="card p-4 sm:p-5">
-      <p className="text-sm text-muted">
+    <div className="space-y-6">
+      <div className="text-center">
+        <h2 className="text-[32px] font-bold tracking-[-0.02em] sm:text-[48px]">Røde flagg.</h2>
+      </div>
+      <p className="text-center text-xl text-inverse-muted">
         {list.filter((f) => f.is_red_flag).length} røde flagg og {list.filter((f) => !f.is_red_flag).length} andre
         negative funn.
       </p>
-      <ul className="mt-2 divide-y divide-border">
+      <ul className="grid gap-5 md:grid-cols-2">
         {list.map((f) => (
-          <li key={f.id}>
-            <p className="pt-3 text-xs font-medium uppercase tracking-wide text-muted">
+          <li key={f.id} className="flex flex-col rounded-[22px] bg-inverse-surface p-6 sm:p-7">
+            <p className="text-xs font-semibold uppercase tracking-[0.04em] text-[#ff6961]">
+              {f.is_red_flag ? "Rødt flagg · " : ""}
               {label[f.category]} · {themeLabel(f.theme)}
             </p>
-            <ul>
-              <FindingItem finding={f} />
-            </ul>
+            <p className="mt-2.5 text-[21px] font-semibold leading-snug">{f.claim}</p>
+            {f.quote && (
+              <p className="mt-2 text-[15px] italic leading-relaxed text-inverse-muted">
+                «{f.quote}»{f.is_paraphrase && <span className="not-italic"> (parafrase)</span>}
+              </p>
+            )}
+            <p className="mt-auto flex flex-wrap gap-x-3 gap-y-1 pt-4 text-[13px] text-inverse-muted">
+              <span>{sourceTypeLabel(f.source_type)}</span>
+              <span>{f.published_at ? formatDate(f.published_at) : "Dato ukjent"}</span>
+              <span>{STRENGTH_TEXT[f.evidence_strength]}</span>
+              <a href={f.source_url} target="_blank" rel="noopener noreferrer" className="text-[#2997ff] hover:underline">
+                {hostOf(f.source_url)} ›
+              </a>
+            </p>
           </li>
         ))}
       </ul>
@@ -260,7 +275,7 @@ export function SourcesView({ sources, findings }: { sources: Source[]; findings
   const uses = new Map<string, number>();
   for (const f of findings) uses.set(f.source_url, (uses.get(f.source_url) ?? 0) + 1);
   return (
-    <div className="card overflow-x-auto">
+    <div className="overflow-x-auto rounded-[22px] bg-surface">
       <table className="w-full text-sm">
         <thead className="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
           <tr>

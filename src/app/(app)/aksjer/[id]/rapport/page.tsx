@@ -38,7 +38,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
 
   if (!research) {
     return (
-      <div className="mx-auto max-w-3xl space-y-6">
+      <div className="mx-auto max-w-[760px] space-y-6 px-[22px] py-14">
         <Link href={`/aksjer/${id}`} className="text-sm text-muted hover:text-fg">
           ← {stock.name}
         </Link>
@@ -73,7 +73,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
   );
 
   return (
-    <article className="mx-auto max-w-3xl space-y-10 print:max-w-none">
+    <article className="mx-auto max-w-[760px] space-y-12 px-[22px] pb-24 pt-14 sm:pt-20 print:max-w-none">
       <header className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
           <Link href={`/aksjer/${id}`} className="text-sm text-muted hover:text-fg">
@@ -87,7 +87,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
             {run.trigger === "weekly" ? " · ukentlig oppdatering" : ""}
             {!isLatest && <span className="ml-2 rounded bg-warn-bg px-1.5 py-0.5 text-warn">Eldre kjøring</span>}
           </p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+          <h1 className="mt-2 text-[40px] font-bold leading-[1.07] tracking-[-0.03em] sm:text-[56px]">
             {stock.name} <span className="font-mono text-lg font-normal text-muted">{stock.ticker}</span>
           </h1>
         </div>
@@ -98,14 +98,14 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
             <span className="text-xs text-muted">mot {formatDate(trend.previous_finished_at)}</span>
           )}
         </div>
-        {report?.headline && <p className="text-xl leading-relaxed">{report.headline}</p>}
+        {report?.headline && <p className="text-[22px] font-semibold leading-snug tracking-[-0.01em] sm:text-[28px]">{report.headline}</p>}
       </header>
 
       {report && report.takeaways.length > 0 && (
         <Section title="Hovedkonklusjoner">
-          <ul className="space-y-3">
+          <ul className="space-y-5 text-[19px]">
             {report.takeaways.map((t, i) => (
-              <li key={i} className="flex gap-3 leading-relaxed">
+              <li key={i} className="flex gap-4 leading-relaxed">
                 <span className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${DOT[t.sentiment]}`} aria-label={t.sentiment} />
                 <span>
                   {t.text} <Cites refs={cite(t.refs)} />
@@ -122,7 +122,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
         ) : (
           <div className="space-y-4">
             {report && report.changes.length > 0 && (
-              <ul className="space-y-2">
+              <ul className="space-y-3 text-[17px]">
                 {report.changes.map((c, i) => (
                   <li key={i} className="leading-relaxed">
                     <TrendBadge direction={c.direction === "ny" ? "uendret" : c.direction} compact /> {c.text}{" "}
@@ -153,7 +153,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
 
       {redFlags.length > 0 && (
         <Section title={`Røde flagg (${redFlags.length})`}>
-          <ul className="space-y-2">
+          <ul className="space-y-4 text-[17px]">
             {redFlags.slice(0, 8).map((f) => (
               <li key={f.id} className="leading-relaxed">
                 <span className="text-xs font-medium uppercase tracking-wide text-muted">{STEP_LABELS[f.category]}</span>
@@ -167,7 +167,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
 
       {sections.ledelse?.promises && sections.ledelse.promises.length > 0 && (
         <Section title="Lovet mot levert">
-          <ul className="space-y-2">
+          <ul className="space-y-3 text-[17px]">
             {sections.ledelse.promises.map((p, i) => (
               <li key={i} className="leading-relaxed">
                 <span className="font-medium">{PROMISE[p.status]}:</span> {p.promise} ({p.said_when}). {p.comment}{" "}
@@ -180,7 +180,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
 
       {report && report.watch_points.length > 0 && (
         <Section title="Følg med på">
-          <ul className="list-disc space-y-2 pl-5">
+          <ul className="list-disc space-y-3 pl-5 text-[17px]">
             {report.watch_points.map((w, i) => (
               <li key={i} className="leading-relaxed">
                 {w.text} <Cites refs={cite(w.refs)} />
@@ -290,9 +290,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="break-inside-avoid-page">
-      <h2 className="mb-3 border-b border-border pb-2 text-sm font-semibold uppercase tracking-wide text-muted">
-        {title}
-      </h2>
+      <h2 className="mb-4 text-[28px] font-bold tracking-[-0.02em] sm:text-[32px]">{title}</h2>
       {children}
     </section>
   );
@@ -325,7 +323,7 @@ function TrendTable({ entries }: { entries: TrendEntry[] }) {
     themes: entries.filter((e) => e.category === c && e.theme && e.direction !== "ny" && e.direction !== "uendret"),
   }));
   return (
-    <div className="card divide-y divide-border">
+    <div className="divide-y divide-border overflow-hidden rounded-[22px] bg-surface-2">
       {rows.map(({ c, main, themes }) => (
         <div key={c} className="px-4 py-3">
           <div className="flex items-center justify-between gap-3">

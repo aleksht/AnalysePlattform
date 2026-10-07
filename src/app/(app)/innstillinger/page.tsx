@@ -76,8 +76,8 @@ export default async function SettingsPage() {
   const missing = missingResearchConfig();
 
   return (
-    <div className="space-y-10">
-      <h1 className="text-2xl font-semibold tracking-tight">Innstillinger</h1>
+    <div className="mx-auto max-w-[1024px] space-y-14 px-[22px] pb-24 pt-14 sm:pt-20">
+      <h1 className="text-[40px] font-bold tracking-[-0.03em] sm:text-[56px]">Innstillinger.</h1>
 
       {/* ------------------------------------------------------------ Kostnad */}
       <section className="space-y-4">
@@ -297,7 +297,7 @@ export default async function SettingsPage() {
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">{children}</h2>;
+  return <h2 className="text-[28px] font-bold tracking-[-0.02em]">{children}</h2>;
 }
 
 function Tile({ label, value, sub }: { label: string; value: string; sub?: string }) {

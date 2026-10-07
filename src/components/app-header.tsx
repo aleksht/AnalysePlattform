@@ -2,34 +2,30 @@ import Link from "next/link";
 import { signOut } from "@/lib/actions/auth";
 import { ThemeToggle } from "./theme-toggle";
 
+/** Gjennomsiktig toppmeny med uskarp bakgrunn, i stil med apple.no. */
 export function AppHeader() {
   return (
-    <header className="sticky top-0 z-20 print:hidden border-b border-border bg-surface/90 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-          <span className="flex h-7 w-7 items-center justify-center rounded bg-accent text-sm text-accent-fg">
-            A
-          </span>
-          <span className="hidden sm:inline">Aksjeinnsikt</span>
+    <header className="sticky top-0 z-30 border-b border-black/[0.08] bg-nav backdrop-blur-xl backdrop-saturate-[1.8] print:hidden dark:border-white/[0.08]">
+      <nav
+        aria-label="Hovedmeny"
+        className="mx-auto flex h-12 max-w-[1024px] items-center justify-between gap-3 whitespace-nowrap px-[22px] text-[13px]"
+      >
+        <Link href="/" className="text-[15px] font-semibold tracking-tight text-fg">
+          Aksjeinnsikt
         </Link>
-        <nav className="ml-auto flex items-center gap-0.5 whitespace-nowrap text-sm">
-          <Link href="/" className="rounded-md px-2 py-1.5 text-muted hover:bg-surface-2 hover:text-fg">
+        <div className="flex items-center gap-4 sm:gap-8">
+          <Link href="/" className="text-fg/80 hover:text-fg">
             Aksjer
           </Link>
-          <Link
-            href="/innstillinger"
-            className="rounded-md px-2 py-1.5 text-muted hover:bg-surface-2 hover:text-fg"
-          >
+          <Link href="/innstillinger" className="text-fg/80 hover:text-fg">
             Innstillinger
           </Link>
           <ThemeToggle />
           <form action={signOut}>
-            <button className="rounded-md px-2 py-1.5 text-muted hover:bg-surface-2 hover:text-fg">
-              Logg ut
-            </button>
+            <button className="text-fg/80 hover:text-fg">Logg ut</button>
           </form>
-        </nav>
-      </div>
+        </div>
+      </nav>
     </header>
   );
 }
