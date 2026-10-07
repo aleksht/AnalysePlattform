@@ -19,17 +19,8 @@ Webapp for aksjeresearch: hva kunder, ansatte og markedet faktisk mener om selsk
 
 1. Lag et prosjekt i regionen **eu-north-1 (Stockholm)**.
 2. Kjør migrasjonene i `supabase/migrations/` i rekkefølge (0001–0005). Bruk enten SQL Editor i dashbordet, eller `supabase link` og deretter `supabase db push`.
-3. Gå til **Authentication → URL Configuration**:
-   - Site URL: `https://<din-app>.vercel.app`
-   - Redirect URLs: `https://<din-app>.vercel.app/auth/confirm` og `http://localhost:3000/auth/confirm`
-4. Gå til **Authentication → Emails → Magic Link** og bytt malen ut med denne. Da virker lenken også når den åpnes på en annen enhet enn den du ba om den fra, og e-posten får en kode som kan skrives inn:
-
-   ```html
-   <h2>Logg inn på Aksjeinnsikt</h2>
-   <p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">Logg inn</a></p>
-   <p>Eller skriv inn koden: <strong>{{ .Token }}</strong></p>
-   ```
-
+3. Gå til **Authentication → Sign In / Providers**. Slå av «Allow new users to sign up» og la Email stå på.
+4. Gå til **Authentication → Users → Add user → Create new user** og legg inn hver bruker med e-post og passord. Huk av for **Auto Confirm User**. Innlogging skjer med e-post og passord, så det sendes ingen e-post fra Supabase.
 5. Hent nøklene under **Project Settings → API Keys**: én publishable-nøkkel og én secret-nøkkel.
 6. Legg inn to hemmeligheter i Vault (SQL Editor). pg_cron bruker dem til å vekke arbeideren:
 
@@ -88,8 +79,7 @@ Resultatet vises i rapportvisningen (`/aksjer/[id]/rapport`).
 ```
 supabase/migrations/   SQL-migrasjoner (tabeller + RLS)
 src/proxy.ts           Fornyer sesjonen, sender uinnloggede til /login
-src/app/login          Innlogging med magisk lenke eller kode
-src/app/auth/confirm   Mottar den magiske lenken
+src/app/login          Innlogging med e-post og passord
 src/app/(app)/         Innloggede sider: oversikt, aksjeside, innstillinger
 src/components/        UI-komponenter
 src/lib/actions/       Server actions (validert med zod)
