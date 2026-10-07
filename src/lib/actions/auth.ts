@@ -33,9 +33,11 @@ export async function sendMagicLink(_prev: LoginState, formData: FormData): Prom
     const supabase = await createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${await siteUrl()}/auth/confirm` },
+      // Bare brukere som er lagt inn i Supabase på forhånd kan logge inn
+      options: { emailRedirectTo: `${await siteUrl()}/auth/confirm`, shouldCreateUser: false },
     });
-    if (error) {
+    // Ukjent bruker gir feil fra Supabase. Svarer som om alt gikk bra, så listen ikke kan kartlegges.
+    if (error && error.status !== 422 && !/signups not allowed|user not found/i.test(error.message)) {
       console.error("signInWithOtp", error.message);
       return {
         step: "email",
